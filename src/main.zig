@@ -25,6 +25,14 @@ const Color = packed union {
     inline fn rgba(r: u8, g: u8, b: u8, a: u8) Color {
         return .{ .channels = .{ .a = a, .r = r, .g = g, .b = b } };
     }
+
+    const black = Color.hex(0xFF_00_00_00);
+    const white = Color.hex(0xFF_FF_FF_FF);
+    const grey = Color.hex(0xFF_33_33_33);
+    const red = Color.hex(0xFF_FF_00_00);
+    const green = Color.hex(0xFF_00_FF_00);
+    const blue = Color.hex(0xFF_00_00_FF);
+    const yellow = Color.hex(0xFF_FF_FF_00);
 };
 
 test "color union" {
@@ -137,12 +145,16 @@ const Window = struct {
 
         self.color_buffer = try self.ally.alloc(Color, self.width * self.height);
         errdefer self.ally.free(self.color_buffer);
-        @memset(self.color_buffer, Color.rgba(0, 0, 0, 0));
+        @memset(self.color_buffer, Color.black);
 
         return self;
     }
 
-    pub fn renderColorBuffer(self: Window) !void {
+    pub fn setPixel(self: Window, x: usize, y: usize, color: Color) void {
+        self.color_buffer[(self.width * y) + x] = color; // in debug builds zig will panic when out of bounds.
+    }
+
+    fn renderColorBuffer(self: Window) !void {
         // TODO: UpdateTexture is slow and meant to be used with static textures
         var result: c_int = c.SDL_UpdateTexture(
             self.sdl_color_buffer_texture,
@@ -162,14 +174,16 @@ const Window = struct {
         }
     }
 
-    pub fn setPixel(self: Window, x: usize, y: usize, color: Color) void {
-        self.color_buffer[(self.width * y) + x] = color;
+    fn clearColorBuffer(self: Window, color: Color) void {
+        @memset(self.color_buffer, color);
+    }
+
+    pub fn present(self: Window) !void {
+        try self.renderColorBuffer();
+        self.clearColorBuffer(Color.black);
+        c.SDL_RenderPresent(self.sdl_renderer);
     }
 };
-
-fn clearColorBuffer(window: Window, color: Color) void {
-    @memset(window.color_buffer, color);
-}
 
 fn drawGrid(window: Window, x_step: u32, y_step: u32, color: Color) void {
     var x: u32 = 0;
@@ -185,15 +199,30 @@ fn drawGrid(window: Window, x_step: u32, y_step: u32, color: Color) void {
     }
 }
 
-fn drawRect(window: Window, x: u32, y: u32, width: u32, height: u32, color: Color) void {
-    const clamped_width = if (x + width < window.width) width else window.width - x;
-    const clamped_height = if (y + height < window.height) height else window.height - y;
+fn drawRect(window: Window, x: isize, y: isize, width: usize, height: usize, color: Color) void {
+    const start_x: usize = @min(@max(0, x), window.width);
+    const start_y: usize = @min(@max(0, y), window.height);
 
-    for (y..(y + clamped_height)) |y_| {
-        for (x..(x + clamped_width)) |x_| {
-            window.setPixel(x_, y_, color);
+    const end_x: usize = @min(start_x + width, window.width);
+    const end_y: usize = @min(start_y + height, window.height);
+
+    for (start_y..end_y) |_y| {
+        for (start_x..end_x) |_x| {
+            window.setPixel(_x, _y, color);
         }
     }
+}
+
+const Vec2 = @Vector(2, f32);
+const Vec3 = @Vector(3, f32);
+
+fn projectOrtho(point: Vec3, fov_factor: f32) Vec2 {
+    // At this point, everything will be presented 1:1.
+    // If the position was (1, 1, 1) and we present it as is, the final pixel location will be (1, 1)
+    const coord = Vec2{ point[0], point[1] };
+
+    // With a fov factor of 100, the final pixel location will be (100, 100)
+    return coord * @as(Vec2, @splat(fov_factor));
 }
 
 pub fn main() !void {
@@ -212,36 +241,98 @@ pub fn main() !void {
     var window = try Window.init(gpa, null, null, false);
     defer window.deinit();
 
-    game_loop: while (true) {
-        //
-        var event: c.SDL_Event = undefined;
-        while (c.SDL_PollEvent(&event) == 1) {
-            //
-            switch (event.type) {
-                c.SDL_QUIT => {
-                    break :game_loop;
-                },
-                c.SDL_KEYDOWN => {
-                    const keyboard_event: c.SDL_KeyboardEvent = event.key;
-                    if (keyboard_event.keysym.sym == c.SDLK_ESCAPE) {
-                        break :game_loop;
-                    }
-                },
-                else => {},
+    const num_cube_points = 9 * 9 * 9;
+    var cube_points: [num_cube_points]Vec3 = undefined;
+    {
+        var num_initialized: u32 = 0;
+        var x: f32 = -1;
+        var y: f32 = -1;
+        var z: f32 = -1;
+
+        while (z <= 1) : (z += 0.25) {
+            while (y <= 1) : (y += 0.25) {
+                while (x <= 1) : (x += 0.25) {
+                    cube_points[num_initialized] = Vec3{ x, y, z };
+                    num_initialized += 1;
+                }
+                x = -1;
             }
-            //
+            y = -1;
+        }
+        std.debug.assert(num_initialized == num_cube_points);
+    }
+
+    const animate = false;
+    const min_fov_factor: f32 = 0.0;
+    const max_fov_factor: f32 = 120.0;
+    var fov_factor_speed: f32 = 1.0;
+    var fov_factor: f32 = max_fov_factor;
+
+    game_loop: while (true) {
+        // poll events
+        {
+            var event: c.SDL_Event = undefined;
+            while (c.SDL_PollEvent(&event) == 1) {
+                //
+                switch (event.type) {
+                    c.SDL_QUIT => {
+                        break :game_loop;
+                    },
+                    c.SDL_KEYDOWN => {
+                        const keyboard_event: c.SDL_KeyboardEvent = event.key;
+                        if (keyboard_event.keysym.sym == c.SDLK_ESCAPE) {
+                            break :game_loop;
+                        }
+                    },
+                    else => {},
+                }
+                //
+            }
         }
 
-        _ = c.SDL_SetRenderDrawColor(window.sdl_renderer, 0, 0, 0, 255);
-        _ = c.SDL_RenderClear(window.sdl_renderer);
+        // update
+        //
+        var projected_cube_points: [num_cube_points]Vec2 = undefined;
+        {
+            for (0..cube_points.len) |index| {
+                const cube_point: Vec3 = cube_points[index];
+                const projected_point: Vec2 = projectOrtho(cube_point, fov_factor);
+                projected_cube_points[index] = projected_point;
+            }
+        }
 
-        clearColorBuffer(window, Color.hex(0xFF_00_00_00));
-        drawGrid(window, 10, 10, Color.hex(0xFF_33_33_33));
-        // drawGrid(window, 100, 100, Color.hex(0xFF_FF_FF_00));
-        drawRect(window, 200, 100, 400, 300, Color.hex(0xFF_33_33_33));
+        // render
+        {
+            drawGrid(window, 10, 10, Color.grey);
+            // drawGrid(window, 100, 100, Color.yellow);
+            // drawRect(window, -2000, -1000, 4000, 5000, Color.grey);
 
-        try window.renderColorBuffer();
 
-        c.SDL_RenderPresent(window.sdl_renderer);
+            for (projected_cube_points) |projected_point| {
+                var pixel_loc_x: i32 = @intFromFloat(projected_point[0]);
+                var pixel_loc_y: i32 = @intFromFloat(projected_point[1]);
+
+                pixel_loc_x += @as(i32, @intCast(window.width / 2));
+                pixel_loc_y += @as(i32, @intCast(window.height / 2));
+
+                drawRect(
+                    window,
+                    pixel_loc_x - 2,
+                    pixel_loc_y - 2,
+                    4, // width
+                    4, // height
+                    Color.yellow,
+                );
+            }
+
+            try window.present();
+
+            if (animate) {
+                if (fov_factor < min_fov_factor or fov_factor >= max_fov_factor) {
+                    fov_factor_speed = -fov_factor_speed;
+                }
+                fov_factor += fov_factor_speed;
+            }
+        }
     }
 }
