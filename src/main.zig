@@ -217,15 +217,18 @@ const Vec2 = @Vector(2, f32);
 const Vec3 = @Vector(3, f32);
 
 fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
-    const x = point[0];
-    const y = point[1];
-
     // At this point, everything will be presented 1:1.
     // If the position was (1, 1, 1) and we present it as is, the final pixel location will be (1, 1)
-    const coord = Vec2{ x, y };
+    var coord = Vec2{ point[0], point[1] };
 
     // With a fov factor of 100, the final pixel location will be (100, 100)
-    return coord * @as(Vec2, @splat(fov_factor));
+    coord *= @as(Vec2, @splat(fov_factor));
+
+    // Larger z-value => smaller displacement from the origin
+    const z = if (point[2] != 0) point[2] else 0.1;
+    coord /= @as(Vec2, @splat(z));
+
+    return coord;
 }
 
 const Application = struct {
@@ -246,6 +249,8 @@ const Application = struct {
     cube_points: [num_cube_points]Vec3,
     projected_points: [num_projected_points]Vec2,
 
+    camera_position: Vec3,
+
     fn deinit(app: *Application) void {
         app.window.deinit();
     }
@@ -257,12 +262,14 @@ const Application = struct {
         self.window = try Window.init(ally, null, null, false);
         errdefer self.window.deinit();
 
-        self.fov_factor = 120.0;
+        self.fov_factor = 600.0;
         self.animate = .{
             // .enable = true,
             .min = 0,
             .max = self.fov_factor,
         };
+
+        self.camera_position = Vec3{ 0, 0, -5 };
 
         return self;
     }
@@ -325,7 +332,8 @@ const Application = struct {
         }
 
         for (0..app.cube_points.len) |index| {
-            const cube_point: Vec3 = app.cube_points[index];
+            var cube_point: Vec3 = app.cube_points[index];
+            cube_point[2] -= app.camera_position[2];
             const projected_point: Vec2 = projectPoint(cube_point, app.fov_factor);
             app.projected_points[index] = projected_point;
         }
