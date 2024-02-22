@@ -216,34 +216,88 @@ fn drawRect(window: Window, x: isize, y: isize, width: usize, height: usize, col
 const Vec2 = @Vector(2, f32);
 const Vec3 = @Vector(3, f32);
 
-fn projectOrtho(point: Vec3, fov_factor: f32) Vec2 {
+fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
+    const x = point[0];
+    const y = point[1];
+
     // At this point, everything will be presented 1:1.
     // If the position was (1, 1, 1) and we present it as is, the final pixel location will be (1, 1)
-    const coord = Vec2{ point[0], point[1] };
+    const coord = Vec2{ x, y };
 
     // With a fov factor of 100, the final pixel location will be (100, 100)
     return coord * @as(Vec2, @splat(fov_factor));
 }
 
-pub fn main() !void {
-    var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const did_leak = general_purpose_allocator.deinit() == .leak;
-        if (builtin.mode == .Debug or builtin.mode == .ReleaseSafe) {
-            std.debug.assert(did_leak == false);
-        } else if (did_leak) {
-            std.log.err("Memory leak detected!", .{});
+const Application = struct {
+    const num_cube_points = 9 * 9 * 9;
+    const num_projected_points = num_cube_points;
+
+    ally: std.mem.Allocator,
+    window: Window,
+
+    fov_factor: f32,
+    animate: struct {
+        enable: bool = false,
+        min: f32,
+        max: f32,
+        speed: f32 = 1.0,
+    },
+
+    cube_points: [num_cube_points]Vec3,
+    projected_points: [num_projected_points]Vec2,
+
+    fn deinit(app: *Application) void {
+        app.window.deinit();
+    }
+
+    fn init(ally: std.mem.Allocator) !Application {
+        var self: Application = undefined;
+        self.ally = ally;
+
+        self.window = try Window.init(ally, null, null, false);
+        errdefer self.window.deinit();
+
+        self.fov_factor = 120.0;
+        self.animate = .{
+            // .enable = true,
+            .min = 0,
+            .max = self.fov_factor,
+        };
+
+        return self;
+    }
+
+    fn run(app: *Application) !void {
+        app.setup();
+
+        while (app.pollEvents()) {
+            app.update();
+            app.render();
+            try app.window.present();
         }
     }
 
-    const gpa = general_purpose_allocator.allocator(); // allocator interface
+    fn pollEvents(_: Application) bool {
+        var event: c.SDL_Event = undefined;
+        while (c.SDL_PollEvent(&event) == 1) {
+            //
+            switch (event.type) {
+                c.SDL_QUIT => {
+                    return false;
+                },
+                c.SDL_KEYDOWN => {
+                    const keyboard_event: c.SDL_KeyboardEvent = event.key;
+                    if (keyboard_event.keysym.sym == c.SDLK_ESCAPE) {
+                        return false;
+                    }
+                },
+                else => {},
+            }
+        }
+        return true;
+    }
 
-    var window = try Window.init(gpa, null, null, false);
-    defer window.deinit();
-
-    const num_cube_points = 9 * 9 * 9;
-    var cube_points: [num_cube_points]Vec3 = undefined;
-    {
+    fn setup(app: *Application) void {
         var num_initialized: u32 = 0;
         var x: f32 = -1;
         var y: f32 = -1;
@@ -252,87 +306,69 @@ pub fn main() !void {
         while (z <= 1) : (z += 0.25) {
             while (y <= 1) : (y += 0.25) {
                 while (x <= 1) : (x += 0.25) {
-                    cube_points[num_initialized] = Vec3{ x, y, z };
+                    app.cube_points[num_initialized] = Vec3{ x, y, z };
                     num_initialized += 1;
                 }
                 x = -1;
             }
             y = -1;
         }
-        std.debug.assert(num_initialized == num_cube_points);
+        std.debug.assert(num_initialized == app.cube_points.len);
     }
 
-    const animate = false;
-    const min_fov_factor: f32 = 0.0;
-    const max_fov_factor: f32 = 120.0;
-    var fov_factor_speed: f32 = 1.0;
-    var fov_factor: f32 = max_fov_factor;
-
-    game_loop: while (true) {
-        // poll events
-        {
-            var event: c.SDL_Event = undefined;
-            while (c.SDL_PollEvent(&event) == 1) {
-                //
-                switch (event.type) {
-                    c.SDL_QUIT => {
-                        break :game_loop;
-                    },
-                    c.SDL_KEYDOWN => {
-                        const keyboard_event: c.SDL_KeyboardEvent = event.key;
-                        if (keyboard_event.keysym.sym == c.SDLK_ESCAPE) {
-                            break :game_loop;
-                        }
-                    },
-                    else => {},
-                }
-                //
+    fn update(app: *Application) void {
+        if (app.animate.enable) {
+            if (app.fov_factor < app.animate.min or app.fov_factor >= app.animate.max) {
+                app.animate.speed = -app.animate.speed;
             }
+            app.fov_factor += app.animate.speed;
         }
 
-        // update
-        //
-        var projected_cube_points: [num_cube_points]Vec2 = undefined;
-        {
-            for (0..cube_points.len) |index| {
-                const cube_point: Vec3 = cube_points[index];
-                const projected_point: Vec2 = projectOrtho(cube_point, fov_factor);
-                projected_cube_points[index] = projected_point;
-            }
-        }
-
-        // render
-        {
-            drawGrid(window, 10, 10, Color.grey);
-            // drawGrid(window, 100, 100, Color.yellow);
-            // drawRect(window, -2000, -1000, 4000, 5000, Color.grey);
-
-
-            for (projected_cube_points) |projected_point| {
-                var pixel_loc_x: i32 = @intFromFloat(projected_point[0]);
-                var pixel_loc_y: i32 = @intFromFloat(projected_point[1]);
-
-                pixel_loc_x += @as(i32, @intCast(window.width / 2));
-                pixel_loc_y += @as(i32, @intCast(window.height / 2));
-
-                drawRect(
-                    window,
-                    pixel_loc_x - 2,
-                    pixel_loc_y - 2,
-                    4, // width
-                    4, // height
-                    Color.yellow,
-                );
-            }
-
-            try window.present();
-
-            if (animate) {
-                if (fov_factor < min_fov_factor or fov_factor >= max_fov_factor) {
-                    fov_factor_speed = -fov_factor_speed;
-                }
-                fov_factor += fov_factor_speed;
-            }
+        for (0..app.cube_points.len) |index| {
+            const cube_point: Vec3 = app.cube_points[index];
+            const projected_point: Vec2 = projectPoint(cube_point, app.fov_factor);
+            app.projected_points[index] = projected_point;
         }
     }
+
+    fn render(app: Application) void {
+        drawGrid(app.window, 10, 10, Color.grey);
+        // drawGrid(window, 100, 100, Color.yellow);
+        // drawRect(window, -2000, -1000, 4000, 5000, Color.grey);
+
+        for (app.projected_points) |projected_point| {
+            var pixel_loc_x: i32 = @intFromFloat(projected_point[0]);
+            var pixel_loc_y: i32 = @intFromFloat(projected_point[1]);
+
+            pixel_loc_x += @as(i32, @intCast(app.window.width / 2));
+            pixel_loc_y += @as(i32, @intCast(app.window.height / 2));
+
+            drawRect(
+                app.window,
+                pixel_loc_x - 2,
+                pixel_loc_y - 2,
+                4, // width
+                4, // height
+                Color.yellow,
+            );
+        }
+    }
+};
+
+pub fn main() !void {
+    var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        const did_leak = general_purpose_allocator.deinit() == .leak;
+        if (did_leak) {
+            std.log.err("Memory leak detected!", .{});
+            std.debug.assert(false);
+        }
+    }
+
+    const gpa = general_purpose_allocator.allocator(); // allocator interface
+
+    var app = try Application.init(gpa);
+    defer app.deinit();
+
+    try app.run();
 }
