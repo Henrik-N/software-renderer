@@ -262,6 +262,39 @@ fn rotZ(vec: Vec3, angle: f32) Vec3 {
     };
 }
 
+const Time = struct {
+    const Instant = std.time.Instant;
+
+    cached_now: Instant,
+    last_time: Instant,
+    delta_nanoseconds: u64,
+    delta_seconds: f32,
+
+    fn init() Time {
+        const now = Instant.now() catch unreachable;
+        return Time{
+            .cached_now = now,
+            .last_time = now,
+            .delta_nanoseconds = 0,
+            .delta_seconds = 0,
+        };
+    }
+
+    fn tick(self: *Time) void {
+        self.delta_nanoseconds = self.tickImpl();
+        self.delta_seconds = @as(f32, @floatFromInt(self.delta_nanoseconds)) / std.time.ns_per_s;
+    }
+
+    fn tickImpl(self: *Time) u64 {
+        const now = Instant.now() catch unreachable;
+        if (now.order(self.cached_now) == .gt) {
+            self.cached_now = now;
+        }
+        defer self.last_time = self.cached_now;
+        return self.cached_now.since(self.last_time);
+    }
+};
+
 const Application = struct {
     const num_cube_points = 9 * 9 * 9;
     const num_axes_points = 10 * 3;
@@ -269,13 +302,14 @@ const Application = struct {
 
     ally: std.mem.Allocator,
     window: Window,
+    time: Time,
 
     fov_factor: f32,
     animate: struct {
         enable: bool = false,
         min: f32,
         max: f32,
-        speed: f32 = 1.0,
+        speed: f32 = 100.0,
     },
 
     cube_points: [num_cube_points]Vec3,
@@ -285,7 +319,7 @@ const Application = struct {
 
     camera_position: Vec3,
 
-    t: f32, // temp
+    t: f32,
 
     fn deinit(app: *Application) void {
         app.window.deinit();
@@ -297,6 +331,8 @@ const Application = struct {
 
         self.window = try Window.init(ally, null, null, false);
         errdefer self.window.deinit();
+
+        self.time = Time.init();
 
         self.fov_factor = 600.0;
         self.animate = .{
@@ -315,7 +351,11 @@ const Application = struct {
     fn run(app: *Application) !void {
         app.setup();
 
-        while (app.pollEvents()) {
+        while (true) {
+            if (!app.pollEvents()) {
+                break;
+            }
+            app.time.tick();
             app.update();
             app.render();
             try app.window.present();
@@ -373,10 +413,10 @@ const Application = struct {
             if (app.fov_factor < app.animate.min or app.fov_factor >= app.animate.max) {
                 app.animate.speed = -app.animate.speed;
             }
-            app.fov_factor += app.animate.speed;
+            app.fov_factor += app.animate.speed * app.time.delta_seconds;
         }
 
-        app.t += 0.001;
+        app.t += app.time.delta_seconds * 0.1;
 
         var projected_points_array_offset: usize = 0;
 
