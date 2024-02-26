@@ -228,12 +228,44 @@ fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
     const z = if (point[2] != 0) point[2] else 0.1;
     coord /= @as(Vec2, @splat(z));
 
+    // Positive Y up
+    coord[1] = -coord[1];
+
     return coord;
+}
+
+const X = 0;
+const Y = 1;
+const Z = 2;
+
+fn rotX(vec: Vec3, angle: f32) Vec3 {
+    return Vec3{
+        vec[X],
+        vec[Y] * @cos(angle) + vec[Z] * @sin(angle),
+        vec[Z] * @cos(angle) - vec[Y] * @sin(angle),
+    };
+}
+
+fn rotY(vec: Vec3, angle: f32) Vec3 {
+    return Vec3{
+        vec[X] * @cos(angle) - vec[Z] * @sin(angle),
+        vec[Y],
+        vec[Z] * @cos(angle) + vec[X] * @sin(angle),
+    };
+}
+
+fn rotZ(vec: Vec3, angle: f32) Vec3 {
+    return Vec3{
+        vec[X] * @cos(angle) - vec[Y] * @sin(angle),
+        vec[Y] * @cos(angle) + vec[X] * @sin(angle),
+        vec[Z],
+    };
 }
 
 const Application = struct {
     const num_cube_points = 9 * 9 * 9;
-    const num_projected_points = num_cube_points;
+    const num_axes_points = 10 * 3;
+    const num_projected_points = num_cube_points + num_axes_points;
 
     ally: std.mem.Allocator,
     window: Window,
@@ -247,9 +279,13 @@ const Application = struct {
     },
 
     cube_points: [num_cube_points]Vec3,
+    axes_points: [num_axes_points]Vec3,
+
     projected_points: [num_projected_points]Vec2,
 
     camera_position: Vec3,
+
+    t: f32, // temp
 
     fn deinit(app: *Application) void {
         app.window.deinit();
@@ -270,6 +306,8 @@ const Application = struct {
         };
 
         self.camera_position = Vec3{ 0, 0, -5 };
+
+        self.t = 0.0;
 
         return self;
     }
@@ -321,6 +359,13 @@ const Application = struct {
             y = -1;
         }
         std.debug.assert(num_initialized == app.cube_points.len);
+
+        var x_axis_points: []Vec3 = app.axes_points[0..10];
+        var y_axis_points: []Vec3 = app.axes_points[10..20];
+        var z_axis_points: []Vec3 = app.axes_points[20..30];
+        for (0..x_axis_points.len) |index| x_axis_points[index] = Vec3{ 0.25 * @as(f32, @floatFromInt(index)), 0, 0 };
+        for (0..y_axis_points.len) |index| y_axis_points[index] = Vec3{ 0, 0.25 * @as(f32, @floatFromInt(index)), 0 };
+        for (0..z_axis_points.len) |index| z_axis_points[index] = Vec3{ 0, 0, 0.25 * @as(f32, @floatFromInt(index)) };
     }
 
     fn update(app: *Application) void {
@@ -331,25 +376,55 @@ const Application = struct {
             app.fov_factor += app.animate.speed;
         }
 
+        app.t += 0.001;
+
+        var projected_points_array_offset: usize = 0;
+
         for (0..app.cube_points.len) |index| {
-            var cube_point: Vec3 = app.cube_points[index];
-            cube_point[2] -= app.camera_position[2];
-            const projected_point: Vec2 = projectPoint(cube_point, app.fov_factor);
-            app.projected_points[index] = projected_point;
+            var point: Vec3 = app.cube_points[index];
+            point = rotX(point, std.math.tau * app.t);
+            point = rotY(point, std.math.tau * app.t);
+            point = rotZ(point, std.math.tau * app.t);
+
+            point[Z] -= app.camera_position[Z];
+
+            const projected_point: Vec2 = projectPoint(point, app.fov_factor);
+            app.projected_points[projected_points_array_offset + index] = projected_point;
+        }
+
+        projected_points_array_offset += app.cube_points.len;
+
+        for (0..app.axes_points.len) |index| {
+            var point: Vec3 = app.axes_points[index];
+            point = rotX(point, std.math.tau * app.t);
+            point = rotY(point, std.math.tau * app.t);
+            point = rotZ(point, std.math.tau * app.t);
+
+            point[Z] -= app.camera_position[Z];
+
+            const projected_point: Vec2 = projectPoint(point, app.fov_factor);
+            app.projected_points[projected_points_array_offset + index] = projected_point;
         }
     }
 
     fn render(app: Application) void {
         drawGrid(app.window, 10, 10, Color.grey);
-        // drawGrid(window, 100, 100, Color.yellow);
-        // drawRect(window, -2000, -1000, 4000, 5000, Color.grey);
 
-        for (app.projected_points) |projected_point| {
+        for (app.projected_points, 0..) |projected_point, index| {
             var pixel_loc_x: i32 = @intFromFloat(projected_point[0]);
             var pixel_loc_y: i32 = @intFromFloat(projected_point[1]);
 
             pixel_loc_x += @as(i32, @intCast(app.window.width / 2));
             pixel_loc_y += @as(i32, @intCast(app.window.height / 2));
+
+            var color: Color = undefined;
+            if (index < app.cube_points.len) {
+                color = Color.yellow;
+            } else if (index < app.cube_points.len + 10) {
+                color = Color.red;
+            } else if (index < app.cube_points.len + 20) {
+                color = Color.green;
+            } else color = Color.blue;
 
             drawRect(
                 app.window,
@@ -357,7 +432,7 @@ const Application = struct {
                 pixel_loc_y - 2,
                 4, // width
                 4, // height
-                Color.yellow,
+                color,
             );
         }
     }
