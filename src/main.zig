@@ -295,6 +295,49 @@ const Time = struct {
     }
 };
 
+const Face = @Vector(3, u16);
+
+const cube_mesh = struct {
+    // zig fmt: off
+    const vertices = [_]Vec3{
+        .{ -1, -1, -1 },
+        .{  1, -1, -1 },
+        .{  1,  1, -1 },
+        .{ -1,  1, -1 },
+        //
+        .{ -1, -1,  1 },
+        .{  1, -1,  1 },
+        .{  1,  1,  1 },
+        .{ -1,  1,  1 },
+    };
+
+    // counter-clockwise
+    const faces = [_]Face{
+        // front
+        .{0, 1, 2},
+        .{2, 3, 0},
+        // right
+        .{1, 5, 2},
+        .{2, 5, 6},
+        // top
+        .{2, 6, 3},
+        .{3, 6, 7},
+        // left
+        .{4, 0, 3},
+        .{3, 7, 4},
+        // bottom
+        .{0, 4, 1},
+        .{1, 4, 5},
+        // back
+        .{7, 6, 4},
+        .{4, 6, 5}
+    };
+
+    // zig fmt: on
+};
+
+const ProjectedFace = [3]Vec2;
+
 const Application = struct {
     const num_cube_points = 9 * 9 * 9;
     const num_axes_points = 10 * 3;
@@ -312,14 +355,11 @@ const Application = struct {
         speed: f32 = 100.0,
     },
 
-    cube_points: [num_cube_points]Vec3,
-    axes_points: [num_axes_points]Vec3,
-
-    projected_points: [num_projected_points]Vec2,
-
     camera_position: Vec3,
 
     t: f32,
+
+    projected_faces: [cube_mesh.faces.len]ProjectedFace,
 
     fn deinit(app: *Application) void {
         app.window.deinit();
@@ -382,31 +422,7 @@ const Application = struct {
         return true;
     }
 
-    fn setup(app: *Application) void {
-        var num_initialized: u32 = 0;
-        var x: f32 = -1;
-        var y: f32 = -1;
-        var z: f32 = -1;
-
-        while (z <= 1) : (z += 0.25) {
-            while (y <= 1) : (y += 0.25) {
-                while (x <= 1) : (x += 0.25) {
-                    app.cube_points[num_initialized] = Vec3{ x, y, z };
-                    num_initialized += 1;
-                }
-                x = -1;
-            }
-            y = -1;
-        }
-        std.debug.assert(num_initialized == app.cube_points.len);
-
-        var x_axis_points: []Vec3 = app.axes_points[0..10];
-        var y_axis_points: []Vec3 = app.axes_points[10..20];
-        var z_axis_points: []Vec3 = app.axes_points[20..30];
-        for (0..x_axis_points.len) |index| x_axis_points[index] = Vec3{ 0.25 * @as(f32, @floatFromInt(index)), 0, 0 };
-        for (0..y_axis_points.len) |index| y_axis_points[index] = Vec3{ 0, 0.25 * @as(f32, @floatFromInt(index)), 0 };
-        for (0..z_axis_points.len) |index| z_axis_points[index] = Vec3{ 0, 0, 0.25 * @as(f32, @floatFromInt(index)) };
-    }
+    fn setup(_: *Application) void {}
 
     fn update(app: *Application) void {
         if (app.animate.enable) {
@@ -418,63 +434,49 @@ const Application = struct {
 
         app.t += app.time.delta_seconds * 0.1;
 
-        var projected_points_array_offset: usize = 0;
+        for (cube_mesh.faces, 0..) |face, face_index| {
+            var face_corners = [3]Vec3{
+                cube_mesh.vertices[face[0]],
+                cube_mesh.vertices[face[1]],
+                cube_mesh.vertices[face[2]],
+            };
 
-        for (0..app.cube_points.len) |index| {
-            var point: Vec3 = app.cube_points[index];
-            point = rotX(point, std.math.tau * app.t);
-            point = rotY(point, std.math.tau * app.t);
-            point = rotZ(point, std.math.tau * app.t);
+            const projected_face: *ProjectedFace = &app.projected_faces[face_index];
 
-            point[Z] -= app.camera_position[Z];
+            for (&face_corners, 0..) |*corner, corner_index| {
+                corner.* = rotX(corner.*, std.math.tau * app.t);
+                corner.* = rotY(corner.*, std.math.tau * app.t);
+                corner.* = rotZ(corner.*, std.math.tau * app.t);
 
-            const projected_point: Vec2 = projectPoint(point, app.fov_factor);
-            app.projected_points[projected_points_array_offset + index] = projected_point;
-        }
+                corner[Z] -= app.camera_position[Z];
 
-        projected_points_array_offset += app.cube_points.len;
-
-        for (0..app.axes_points.len) |index| {
-            var point: Vec3 = app.axes_points[index];
-            point = rotX(point, std.math.tau * app.t);
-            point = rotY(point, std.math.tau * app.t);
-            point = rotZ(point, std.math.tau * app.t);
-
-            point[Z] -= app.camera_position[Z];
-
-            const projected_point: Vec2 = projectPoint(point, app.fov_factor);
-            app.projected_points[projected_points_array_offset + index] = projected_point;
+                const projected_corner: *Vec2 = &projected_face[corner_index];
+                projected_corner.* = projectPoint(corner.*, app.fov_factor);
+                projected_corner[X] += @floatFromInt(app.window.width / 2);
+                projected_corner[Y] += @floatFromInt(app.window.height / 2);
+            }
         }
     }
 
     fn render(app: Application) void {
         drawGrid(app.window, 10, 10, Color.grey);
 
-        for (app.projected_points, 0..) |projected_point, index| {
-            var pixel_loc_x: i32 = @intFromFloat(projected_point[0]);
-            var pixel_loc_y: i32 = @intFromFloat(projected_point[1]);
+        for (app.projected_faces) |projected_face| {
+            for (projected_face) |projected_corner| {
+                const pixel_loc_x: i32 = @intFromFloat(projected_corner[0]);
+                const pixel_loc_y: i32 = @intFromFloat(projected_corner[1]);
 
-            pixel_loc_x += @as(i32, @intCast(app.window.width / 2));
-            pixel_loc_y += @as(i32, @intCast(app.window.height / 2));
-
-            var color: Color = undefined;
-            if (index < app.cube_points.len) {
-                color = Color.yellow;
-            } else if (index < app.cube_points.len + 10) {
-                color = Color.red;
-            } else if (index < app.cube_points.len + 20) {
-                color = Color.green;
-            } else color = Color.blue;
-
-            drawRect(
-                app.window,
-                pixel_loc_x - 2,
-                pixel_loc_y - 2,
-                4, // width
-                4, // height
-                color,
-            );
+                drawRect(
+                    app.window,
+                    pixel_loc_x - 2,
+                    pixel_loc_y - 2,
+                    4, // width
+                    4, // height
+                    Color.white,
+                );
+            }
         }
+        //
     }
 };
 
