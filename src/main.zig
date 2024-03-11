@@ -213,8 +213,43 @@ fn drawRect(window: Window, x: isize, y: isize, width: usize, height: usize, col
     }
 }
 
+fn drawLine(window: Window, from: Vec2i, to: Vec2i, color: Color) void {
+    const delta: Vec2i = to - from;
+    const largest_side_len = @max(@abs(delta[X]), @abs(delta[Y]));
+
+    const step = Vec2{
+        @as(f32, @floatFromInt(delta[X])) / @as(f32, @floatFromInt(largest_side_len)),
+        @as(f32, @floatFromInt(delta[Y])) / @as(f32, @floatFromInt(largest_side_len)),
+    };
+
+    var current_coord = Vec2{ @floatFromInt(from[X]), @floatFromInt(from[Y]) };
+
+    var i: isize = 0;
+    while (i < largest_side_len) : (i += 1) {
+        const coord: Vec2 = @round(current_coord);
+        if (coord[X] < 0.0 or coord[Y] < 0.0) {
+            continue;
+        }
+
+        const coord_x_usize: usize = @intFromFloat(coord[X]);
+        const coord_y_usize: usize = @intFromFloat(coord[Y]);
+        if (coord_x_usize >= window.width or coord_y_usize >= window.height) {
+            continue;
+        }
+
+        window.setPixel(coord_x_usize, coord_y_usize, color);
+
+        current_coord += step;
+    }
+}
+
 const Vec2 = @Vector(2, f32);
 const Vec3 = @Vector(3, f32);
+const Vec2i = @Vector(2, i32);
+
+fn vec2iFromVec2(vec2: Vec2) Vec2i {
+    return Vec2i{ @intFromFloat(vec2[X]), @intFromFloat(vec2[Y]) };
+}
 
 fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
     // At this point, everything will be presented 1:1.
@@ -462,21 +497,14 @@ const Application = struct {
         drawGrid(app.window, 10, 10, Color.grey);
 
         for (app.projected_faces) |projected_face| {
-            for (projected_face) |projected_corner| {
-                const pixel_loc_x: i32 = @intFromFloat(projected_corner[0]);
-                const pixel_loc_y: i32 = @intFromFloat(projected_corner[1]);
+            const corner_a: Vec2i = vec2iFromVec2(projected_face[0]);
+            const corner_b: Vec2i = vec2iFromVec2(projected_face[1]);
+            const corner_c: Vec2i = vec2iFromVec2(projected_face[2]);
 
-                drawRect(
-                    app.window,
-                    pixel_loc_x - 2,
-                    pixel_loc_y - 2,
-                    4, // width
-                    4, // height
-                    Color.white,
-                );
-            }
+            drawLine(app.window, corner_a, corner_b, Color.white);
+            drawLine(app.window, corner_b, corner_c, Color.white);
+            drawLine(app.window, corner_c, corner_a, Color.white);
         }
-        //
     }
 };
 
