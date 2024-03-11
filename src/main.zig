@@ -332,43 +332,70 @@ const Time = struct {
 
 const Face = @Vector(3, u16);
 
-const cube_mesh = struct {
-    // zig fmt: off
-    const vertices = [_]Vec3{
-        .{ -1, -1, -1 },
-        .{  1, -1, -1 },
-        .{  1,  1, -1 },
-        .{ -1,  1, -1 },
-        //
-        .{ -1, -1,  1 },
-        .{  1, -1,  1 },
-        .{  1,  1,  1 },
-        .{ -1,  1,  1 },
-    };
+const Mesh = struct {
+    vertices: std.ArrayList(Vec3),
+    faces: std.ArrayList(Face),
 
-    // counter-clockwise
-    const faces = [_]Face{
-        // front
-        .{0, 1, 2},
-        .{2, 3, 0},
-        // right
-        .{1, 5, 2},
-        .{2, 5, 6},
-        // top
-        .{2, 6, 3},
-        .{3, 6, 7},
-        // left
-        .{4, 0, 3},
-        .{3, 7, 4},
-        // bottom
-        .{0, 4, 1},
-        .{1, 4, 5},
-        // back
-        .{7, 6, 4},
-        .{4, 6, 5}
-    };
+    fn deinit(mesh: Mesh) void {
+        mesh.faces.deinit();
+        mesh.vertices.deinit();
+    }
 
-    // zig fmt: on
+    // Assumes the mesh uses triangle faces
+    fn loadFromObj(ally: std.mem.Allocator, filename: []const u8) !Mesh {
+        var mesh = Mesh{
+            .vertices = std.ArrayList(Vec3).init(ally),
+            .faces = std.ArrayList(Face).init(ally),
+        };
+        errdefer mesh.deinit();
+
+        var file = try std.fs.cwd().openFile(filename, .{}); // TODO: Don't use cwd
+        defer file.close();
+
+        var buffered_reader = std.io.bufferedReader(file.reader());
+        const reader = buffered_reader.reader();
+
+        var line = std.ArrayList(u8).init(ally);
+        defer line.deinit();
+
+        while (reader.streamUntilDelimiter(line.writer(), '\n', null)) {
+            defer line.clearRetainingCapacity();
+
+            var it: std.mem.SplitIterator(u8, .sequence) = std.mem.split(u8, line.items, " ");
+            var word: []const u8 = it.next() orelse continue;
+
+            const is_vertex_entry = std.mem.eql(u8, word, "v");
+            if (is_vertex_entry) {
+                var vertex: Vec3 = undefined;
+                for (0..3) |k| {
+                    word = it.next() orelse return error.ObjVertexEntry;
+                    vertex[k] = try std.fmt.parseFloat(f32, word);
+                }
+                try mesh.vertices.append(vertex);
+                continue;
+            }
+
+            const is_face_entry = std.mem.eql(u8, word, "f");
+            if (is_face_entry) {
+                var face: Face = undefined;
+                for (0..3) |k| {
+                    word = it.next() orelse return error.ObjFaceCorner;
+                    var face_entries_it = std.mem.split(u8, word, "/");
+                    const vertex_index: []const u8 = face_entries_it.next() orelse return error.ObjFaceEntry;
+                    const base = 10;
+                    face[k] = try std.fmt.parseInt(u16, vertex_index, base);
+                    face[k] -= 1; // NOTE obj files start vertex indices at 1
+                }
+                try mesh.faces.append(face);
+                continue;
+            }
+        } else |err| switch (err) {
+            error.EndOfStream => {},
+            else => return err,
+        }
+
+        return mesh;
+    }
 };
 
 const ProjectedFace = [3]Vec2;
@@ -394,15 +421,19 @@ const Application = struct {
 
     t: f32,
 
-    projected_faces: [cube_mesh.faces.len]ProjectedFace,
+    cube_mesh: Mesh,
+    projected_faces: []ProjectedFace,
 
     fn deinit(app: *Application) void {
+        app.cube_mesh.deinit();
+        app.ally.free(app.projected_faces);
         app.window.deinit();
     }
 
     fn init(ally: std.mem.Allocator) !Application {
         var self: Application = undefined;
         self.ally = ally;
+        self.projected_faces = &.{};
 
         self.window = try Window.init(ally, null, null, false);
         errdefer self.window.deinit();
@@ -424,7 +455,7 @@ const Application = struct {
     }
 
     fn run(app: *Application) !void {
-        app.setup();
+        try app.setup();
 
         while (true) {
             if (!app.pollEvents()) {
@@ -457,7 +488,13 @@ const Application = struct {
         return true;
     }
 
-    fn setup(_: *Application) void {}
+    fn setup(app: *Application) !void {
+        app.cube_mesh = try Mesh.loadFromObj(app.ally, "assets/cube.obj");
+        errdefer app.cube_mesh.deinit();
+
+        app.projected_faces = try app.ally.alloc(ProjectedFace, app.cube_mesh.faces.items.len);
+        errdefer app.ally.free(app.projected_faces);
+    }
 
     fn update(app: *Application) void {
         if (app.animate.enable) {
@@ -469,11 +506,11 @@ const Application = struct {
 
         app.t += app.time.delta_seconds * 0.1;
 
-        for (cube_mesh.faces, 0..) |face, face_index| {
+        for (app.cube_mesh.faces.items, 0..) |face, face_index| {
             var face_corners = [3]Vec3{
-                cube_mesh.vertices[face[0]],
-                cube_mesh.vertices[face[1]],
-                cube_mesh.vertices[face[2]],
+                app.cube_mesh.vertices.items[face[0]],
+                app.cube_mesh.vertices.items[face[1]],
+                app.cube_mesh.vertices.items[face[2]],
             };
 
             const projected_face: *ProjectedFace = &app.projected_faces[face_index];
