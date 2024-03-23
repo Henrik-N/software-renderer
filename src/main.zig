@@ -247,6 +247,34 @@ const Vec2 = @Vector(2, f32);
 const Vec3 = @Vector(3, f32);
 const Vec2i = @Vector(2, i32);
 
+fn vec3Normalized(vec: Vec3) Vec3 {
+    const magnitude = vec3Magnitude(vec);
+    if (magnitude <= 0) {
+        return Vec3{ 0, 0, 0 };
+    }
+    return vec / @as(Vec3, @splat(magnitude));
+}
+
+fn vec3Dot(a: Vec3, b: Vec3) f32 {
+    return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];
+}
+
+fn vec3Cross(a: Vec3, b: Vec3) Vec3 {
+    return Vec3{
+        a[Y] * b[Z] - a[Z] * b[Y],
+        a[Z] * b[X] - a[X] * b[Z],
+        a[X] * b[Y] - a[Y] * b[X],
+    };
+}
+
+fn vec3SqMagnitude(vec: Vec3) f32 {
+    return vec[X] * vec[X] + vec[Y] * vec[Y] + vec[Z] * vec[Z];
+}
+
+fn vec3Magnitude(vec: Vec3) f32 {
+    return std.math.sqrt(vec3SqMagnitude(vec));
+}
+
 fn vec2iFromVec2(vec2: Vec2) Vec2i {
     return Vec2i{ @intFromFloat(vec2[X]), @intFromFloat(vec2[Y]) };
 }
@@ -423,9 +451,11 @@ const Application = struct {
 
     cube_mesh: Mesh,
     projected_faces: []ProjectedFace,
+    should_cull_face: []bool,
 
     fn deinit(app: *Application) void {
         app.cube_mesh.deinit();
+        app.ally.free(app.should_cull_face);
         app.ally.free(app.projected_faces);
         app.window.deinit();
     }
@@ -447,7 +477,7 @@ const Application = struct {
             .max = self.fov_factor,
         };
 
-        self.camera_position = Vec3{ 0, 0, -5 };
+        self.camera_position = Vec3{ 0, 0, 0 };
 
         self.t = 0.0;
 
@@ -492,8 +522,13 @@ const Application = struct {
         app.cube_mesh = try Mesh.loadFromObj(app.ally, "assets/cube.obj");
         errdefer app.cube_mesh.deinit();
 
-        app.projected_faces = try app.ally.alloc(ProjectedFace, app.cube_mesh.faces.items.len);
+        const num_faces = app.cube_mesh.faces.items.len;
+
+        app.projected_faces = try app.ally.alloc(ProjectedFace, num_faces);
         errdefer app.ally.free(app.projected_faces);
+
+        app.should_cull_face = try app.ally.alloc(bool, num_faces);
+        errdefer app.ally.free(app.should_cull_face);
     }
 
     fn update(app: *Application) void {
@@ -513,17 +548,34 @@ const Application = struct {
                 app.cube_mesh.vertices.items[face[2]],
             };
 
-            const projected_face: *ProjectedFace = &app.projected_faces[face_index];
-
-            for (&face_corners, 0..) |*corner, corner_index| {
+            // transform
+            //
+            for (&face_corners) |*corner| {
                 corner.* = rotX(corner.*, std.math.tau * app.t);
                 corner.* = rotY(corner.*, std.math.tau * app.t);
                 corner.* = rotZ(corner.*, std.math.tau * app.t);
+                corner[Z] += 5;
+            }
 
-                corner[Z] -= app.camera_position[Z];
+            // cull
+            // NOTE: This is a temporary and inaccurate culling solution
+            //
+            const face_normal_not_normalized = vec3Cross(face_corners[1] - face_corners[0], face_corners[2] - face_corners[0]);
+            const ray_to_face_corner = face_corners[0] - app.camera_position;
 
+            const should_cull = vec3Dot(face_normal_not_normalized, ray_to_face_corner) > 0;
+            app.should_cull_face[face_index] = should_cull;
+            if (should_cull) {
+                continue;
+            }
+
+            // project
+            //
+            const projected_face: *ProjectedFace = &app.projected_faces[face_index];
+
+            for (face_corners, 0..) |corner, corner_index| {
                 const projected_corner: *Vec2 = &projected_face[corner_index];
-                projected_corner.* = projectPoint(corner.*, app.fov_factor);
+                projected_corner.* = projectPoint(corner, app.fov_factor);
                 projected_corner[X] += @floatFromInt(app.window.width / 2);
                 projected_corner[Y] += @floatFromInt(app.window.height / 2);
             }
@@ -533,7 +585,12 @@ const Application = struct {
     fn render(app: Application) void {
         drawGrid(app.window, 10, 10, Color.grey);
 
-        for (app.projected_faces) |projected_face| {
+        for (app.projected_faces, 0..) |projected_face, face_index| {
+            const should_cull = app.should_cull_face[face_index];
+            if (should_cull) {
+                continue;
+            }
+
             const corner_a: Vec2i = vec2iFromVec2(projected_face[0]);
             const corner_b: Vec2i = vec2iFromVec2(projected_face[1]);
             const corner_c: Vec2i = vec2iFromVec2(projected_face[2]);
