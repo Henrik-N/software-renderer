@@ -1,189 +1,19 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const c = @cImport({
-    @cInclude("SDL2/SDL.h");
-});
+const Window = @import("window.zig").Window;
+const Color = @import("color.zig").Color;
+const Mesh = @import("mesh.zig").Mesh;
+const Time = @import("time.zig").Time;
 
-fn logSdlError() void {
-    std.log.err("{s}", .{c.SDL_GetError()});
-}
+const math = @import("math.zig");
+const Vec2 = math.Vec2;
+const Vec3 = math.Vec3;
+const Vec2i = math.Vec2i;
 
-const Color = packed union {
-    hex: u32,
-    channels: packed struct {
-        a: u8,
-        r: u8,
-        g: u8,
-        b: u8,
-    },
-
-    inline fn hex(hex_: u32) Color {
-        return .{ .hex = hex_ };
-    }
-
-    inline fn rgba(r: u8, g: u8, b: u8, a: u8) Color {
-        return .{ .channels = .{ .a = a, .r = r, .g = g, .b = b } };
-    }
-
-    const black = Color.hex(0xFF_00_00_00);
-    const white = Color.hex(0xFF_FF_FF_FF);
-    const grey = Color.hex(0xFF_33_33_33);
-    const red = Color.hex(0xFF_FF_00_00);
-    const green = Color.hex(0xFF_00_FF_00);
-    const blue = Color.hex(0xFF_00_00_FF);
-    const yellow = Color.hex(0xFF_FF_FF_00);
-};
-
-test "color union" {
-    var colors: [3]u32 = undefined;
-    colors[0] = @bitCast(Color.hex(0xFF0000FF));
-    colors[1] = @bitCast(Color.rgba(0, 0, 255, 255));
-    colors[2] = 0xFF0000FF;
-
-    try std.testing.expect(std.mem.eql(u32, &.{colors[0]}, &.{colors[1]}));
-    try std.testing.expect(std.mem.eql(u32, &.{colors[1]}, &.{colors[2]}));
-}
-
-const Window = struct {
-    sdl_window: *c.SDL_Window,
-    width: u32,
-    height: u32,
-
-    sdl_renderer: *c.SDL_Renderer,
-    sdl_color_buffer_texture: *c.SDL_Texture, // color buffer texture
-
-    ally: std.mem.Allocator,
-    color_buffer: []Color,
-
-    pub fn deinit(self: Window) void {
-        self.ally.free(self.color_buffer);
-        c.SDL_DestroyTexture(self.sdl_color_buffer_texture);
-        c.SDL_DestroyRenderer(self.sdl_renderer);
-        c.SDL_DestroyWindow(self.sdl_window);
-        c.SDL_Quit();
-    }
-
-    pub fn init(allocator: std.mem.Allocator, resolution_width: ?u32, resolution_height: ?u32, fullscreen: bool) !Window {
-        if (c.SDL_Init(c.SDL_INIT_EVERYTHING) != 0) {
-            c.SDL_Log("Unable to initialize SDL: %s", c.SDL_GetError());
-            return error.SDLInitFailed;
-        }
-        errdefer c.SDL_Quit();
-
-        var self: Window = undefined;
-
-        {
-            const display_index = 0;
-            var display_mode: c.SDL_DisplayMode = undefined;
-            if (c.SDL_GetCurrentDisplayMode(display_index, &display_mode) != 0) {
-                logSdlError();
-                return error.SDL_GetCurrentDisplayMode;
-            }
-
-            // fake fullscreen if width == null and height == null
-            self.width = if (resolution_width) |w| w else @intCast(display_mode.w);
-            self.height = if (resolution_height) |h| h else @intCast(display_mode.h);
-        }
-
-        self.sdl_window = c.SDL_CreateWindow(
-            null, // window title
-            @as(c_int, c.SDL_WINDOWPOS_CENTERED),
-            @as(c_int, c.SDL_WINDOWPOS_CENTERED),
-            @as(c_int, @intCast(self.width)),
-            @as(c_int, @intCast(self.height)),
-            @as(c_int, c.SDL_WINDOW_BORDERLESS),
-        ) orelse {
-            logSdlError();
-            return error.SDL_CreateWindow;
-        };
-        errdefer c.SDL_DestroyWindow(self.sdl_window);
-
-        if (fullscreen) { // "real" fullscreen
-            _ = c.SDL_SetWindowFullscreen(self.sdl_window, c.SDL_WINDOW_FULLSCREEN);
-        }
-
-        const rendering_driver_index = -1; // first one found supporting the given flags
-        const renderer_flags = 0;
-        self.sdl_renderer = c.SDL_CreateRenderer(
-            self.sdl_window,
-            rendering_driver_index,
-            renderer_flags,
-        ) orelse {
-            logSdlError();
-            return error.SDL_CreateRenderer;
-        };
-        errdefer c.SDL_DestroyRenderer(self.sdl_renderer);
-
-        var renderer_info: c.SDL_RendererInfo = undefined;
-        if (c.SDL_GetRendererInfo(self.sdl_renderer, &renderer_info) != 0) {
-            logSdlError();
-            return error.SDL_GetRendererInfo;
-        }
-
-        const pixel_format: c.SDL_PixelFormatEnum = c.SDL_PIXELFORMAT_ARGB8888;
-
-        for (0..renderer_info.num_texture_formats) |index| {
-            if (pixel_format == renderer_info.texture_formats[index]) {
-                break;
-            }
-        } else return error.PixelFormatUnsupported;
-
-        self.sdl_color_buffer_texture = c.SDL_CreateTexture(
-            self.sdl_renderer,
-            pixel_format,
-            c.SDL_TEXTUREACCESS_STREAMING, // will be updating this texture every frame
-            @as(c_int, @intCast(self.width)),
-            @as(c_int, @intCast(self.height)),
-        ) orelse {
-            logSdlError();
-            return error.SDL_CreateTexture;
-        };
-        errdefer c.SDL_DestroyTexture(self.sdl_color_buffer_texture);
-
-        self.ally = allocator;
-
-        self.color_buffer = try self.ally.alloc(Color, self.width * self.height);
-        errdefer self.ally.free(self.color_buffer);
-        @memset(self.color_buffer, Color.black);
-
-        return self;
-    }
-
-    pub fn setPixel(self: Window, x: usize, y: usize, color: Color) void {
-        self.color_buffer[(self.width * y) + x] = color; // in debug builds zig will panic when out of bounds.
-    }
-
-    fn renderColorBuffer(self: Window) !void {
-        // TODO: UpdateTexture is slow and meant to be used with static textures
-        var result: c_int = c.SDL_UpdateTexture(
-            self.sdl_color_buffer_texture,
-            null, // full rect
-            self.color_buffer.ptr,
-            @as(c_int, @intCast(self.width * @sizeOf(Color))),
-        );
-        if (result != 0) {
-            logSdlError();
-            return error.SDL_UpdateTexture;
-        }
-
-        result = c.SDL_RenderCopy(self.sdl_renderer, self.sdl_color_buffer_texture, null, null);
-        if (result != 0) {
-            logSdlError();
-            return error.SDL_RenderCopy;
-        }
-    }
-
-    fn clearColorBuffer(self: Window, color: Color) void {
-        @memset(self.color_buffer, color);
-    }
-
-    pub fn present(self: Window) !void {
-        try self.renderColorBuffer();
-        self.clearColorBuffer(Color.black);
-        c.SDL_RenderPresent(self.sdl_renderer);
-    }
-};
+const X = 0;
+const Y = 1;
+const Z = 2;
 
 fn drawGrid(window: Window, x_step: u32, y_step: u32, color: Color) void {
     var x: u32 = 0;
@@ -243,41 +73,7 @@ fn drawLine(window: Window, from: Vec2i, to: Vec2i, color: Color) void {
     }
 }
 
-const Vec2 = @Vector(2, f32);
-const Vec3 = @Vector(3, f32);
-const Vec2i = @Vector(2, i32);
-
-fn vec3Normalized(vec: Vec3) Vec3 {
-    const magnitude = vec3Magnitude(vec);
-    if (magnitude <= 0) {
-        return Vec3{ 0, 0, 0 };
-    }
-    return vec / @as(Vec3, @splat(magnitude));
-}
-
-fn vec3Dot(a: Vec3, b: Vec3) f32 {
-    return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];
-}
-
-fn vec3Cross(a: Vec3, b: Vec3) Vec3 {
-    return Vec3{
-        a[Y] * b[Z] - a[Z] * b[Y],
-        a[Z] * b[X] - a[X] * b[Z],
-        a[X] * b[Y] - a[Y] * b[X],
-    };
-}
-
-fn vec3SqMagnitude(vec: Vec3) f32 {
-    return vec[X] * vec[X] + vec[Y] * vec[Y] + vec[Z] * vec[Z];
-}
-
-fn vec3Magnitude(vec: Vec3) f32 {
-    return std.math.sqrt(vec3SqMagnitude(vec));
-}
-
-fn vec2iFromVec2(vec2: Vec2) Vec2i {
-    return Vec2i{ @intFromFloat(vec2[X]), @intFromFloat(vec2[Y]) };
-}
+const ProjectedFace = [3]Vec2;
 
 fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
     // At this point, everything will be presented 1:1.
@@ -296,137 +92,6 @@ fn projectPoint(point: Vec3, fov_factor: f32) Vec2 {
 
     return coord;
 }
-
-const X = 0;
-const Y = 1;
-const Z = 2;
-
-fn rotX(vec: Vec3, angle: f32) Vec3 {
-    return Vec3{
-        vec[X],
-        vec[Y] * @cos(angle) + vec[Z] * @sin(angle),
-        vec[Z] * @cos(angle) - vec[Y] * @sin(angle),
-    };
-}
-
-fn rotY(vec: Vec3, angle: f32) Vec3 {
-    return Vec3{
-        vec[X] * @cos(angle) - vec[Z] * @sin(angle),
-        vec[Y],
-        vec[Z] * @cos(angle) + vec[X] * @sin(angle),
-    };
-}
-
-fn rotZ(vec: Vec3, angle: f32) Vec3 {
-    return Vec3{
-        vec[X] * @cos(angle) - vec[Y] * @sin(angle),
-        vec[Y] * @cos(angle) + vec[X] * @sin(angle),
-        vec[Z],
-    };
-}
-
-const Time = struct {
-    const Instant = std.time.Instant;
-
-    cached_now: Instant,
-    last_time: Instant,
-    delta_nanoseconds: u64,
-    delta_seconds: f32,
-
-    fn init() Time {
-        const now = Instant.now() catch unreachable;
-        return Time{
-            .cached_now = now,
-            .last_time = now,
-            .delta_nanoseconds = 0,
-            .delta_seconds = 0,
-        };
-    }
-
-    fn tick(self: *Time) void {
-        self.delta_nanoseconds = self.tickImpl();
-        self.delta_seconds = @as(f32, @floatFromInt(self.delta_nanoseconds)) / std.time.ns_per_s;
-    }
-
-    fn tickImpl(self: *Time) u64 {
-        const now = Instant.now() catch unreachable;
-        if (now.order(self.cached_now) == .gt) {
-            self.cached_now = now;
-        }
-        defer self.last_time = self.cached_now;
-        return self.cached_now.since(self.last_time);
-    }
-};
-
-const Face = @Vector(3, u16);
-
-const Mesh = struct {
-    vertices: std.ArrayList(Vec3),
-    faces: std.ArrayList(Face),
-
-    fn deinit(mesh: Mesh) void {
-        mesh.faces.deinit();
-        mesh.vertices.deinit();
-    }
-
-    // Assumes the mesh uses triangle faces
-    fn loadFromObj(ally: std.mem.Allocator, filename: []const u8) !Mesh {
-        var mesh = Mesh{
-            .vertices = std.ArrayList(Vec3).init(ally),
-            .faces = std.ArrayList(Face).init(ally),
-        };
-        errdefer mesh.deinit();
-
-        var file = try std.fs.cwd().openFile(filename, .{}); // TODO: Don't use cwd
-        defer file.close();
-
-        var buffered_reader = std.io.bufferedReader(file.reader());
-        const reader = buffered_reader.reader();
-
-        var line = std.ArrayList(u8).init(ally);
-        defer line.deinit();
-
-        while (reader.streamUntilDelimiter(line.writer(), '\n', null)) {
-            defer line.clearRetainingCapacity();
-
-            var it: std.mem.SplitIterator(u8, .sequence) = std.mem.split(u8, line.items, " ");
-            var word: []const u8 = it.next() orelse continue;
-
-            const is_vertex_entry = std.mem.eql(u8, word, "v");
-            if (is_vertex_entry) {
-                var vertex: Vec3 = undefined;
-                for (0..3) |k| {
-                    word = it.next() orelse return error.ObjVertexEntry;
-                    vertex[k] = try std.fmt.parseFloat(f32, word);
-                }
-                try mesh.vertices.append(vertex);
-                continue;
-            }
-
-            const is_face_entry = std.mem.eql(u8, word, "f");
-            if (is_face_entry) {
-                var face: Face = undefined;
-                for (0..3) |k| {
-                    word = it.next() orelse return error.ObjFaceCorner;
-                    var face_entries_it = std.mem.split(u8, word, "/");
-                    const vertex_index: []const u8 = face_entries_it.next() orelse return error.ObjFaceEntry;
-                    const base = 10;
-                    face[k] = try std.fmt.parseInt(u16, vertex_index, base);
-                    face[k] -= 1; // NOTE obj files start vertex indices at 1
-                }
-                try mesh.faces.append(face);
-                continue;
-            }
-        } else |err| switch (err) {
-            error.EndOfStream => {},
-            else => return err,
-        }
-
-        return mesh;
-    }
-};
-
-const ProjectedFace = [3]Vec2;
 
 const Application = struct {
     const num_cube_points = 9 * 9 * 9;
@@ -488,7 +153,7 @@ const Application = struct {
         try app.setup();
 
         while (true) {
-            if (!app.pollEvents()) {
+            if (!app.window.pollEvents()) {
                 break;
             }
             app.time.tick();
@@ -496,26 +161,6 @@ const Application = struct {
             app.render();
             try app.window.present();
         }
-    }
-
-    fn pollEvents(_: Application) bool {
-        var event: c.SDL_Event = undefined;
-        while (c.SDL_PollEvent(&event) == 1) {
-            //
-            switch (event.type) {
-                c.SDL_QUIT => {
-                    return false;
-                },
-                c.SDL_KEYDOWN => {
-                    const keyboard_event: c.SDL_KeyboardEvent = event.key;
-                    if (keyboard_event.keysym.sym == c.SDLK_ESCAPE) {
-                        return false;
-                    }
-                },
-                else => {},
-            }
-        }
-        return true;
     }
 
     fn setup(app: *Application) !void {
@@ -551,19 +196,19 @@ const Application = struct {
             // transform
             //
             for (&face_corners) |*corner| {
-                corner.* = rotX(corner.*, std.math.tau * app.t);
-                corner.* = rotY(corner.*, std.math.tau * app.t);
-                corner.* = rotZ(corner.*, std.math.tau * app.t);
+                corner.* = math.rotX(corner.*, std.math.tau * app.t);
+                corner.* = math.rotY(corner.*, std.math.tau * app.t);
+                corner.* = math.rotZ(corner.*, std.math.tau * app.t);
                 corner[Z] += 5;
             }
 
             // cull
             // NOTE: This is a temporary and inaccurate culling solution
             //
-            const face_normal_not_normalized = vec3Cross(face_corners[1] - face_corners[0], face_corners[2] - face_corners[0]);
+            const face_normal_not_normalized = math.vec3Cross(face_corners[1] - face_corners[0], face_corners[2] - face_corners[0]);
             const ray_to_face_corner = face_corners[0] - app.camera_position;
 
-            const should_cull = vec3Dot(face_normal_not_normalized, ray_to_face_corner) > 0;
+            const should_cull = math.vec3Dot(face_normal_not_normalized, ray_to_face_corner) > 0;
             app.should_cull_face[face_index] = should_cull;
             if (should_cull) {
                 continue;
@@ -591,9 +236,9 @@ const Application = struct {
                 continue;
             }
 
-            const corner_a: Vec2i = vec2iFromVec2(projected_face[0]);
-            const corner_b: Vec2i = vec2iFromVec2(projected_face[1]);
-            const corner_c: Vec2i = vec2iFromVec2(projected_face[2]);
+            const corner_a: Vec2i = math.vec2iFromVec2(projected_face[0]);
+            const corner_b: Vec2i = math.vec2iFromVec2(projected_face[1]);
+            const corner_c: Vec2i = math.vec2iFromVec2(projected_face[2]);
 
             drawLine(app.window, corner_a, corner_b, Color.white);
             drawLine(app.window, corner_b, corner_c, Color.white);
