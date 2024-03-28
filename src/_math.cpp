@@ -6,6 +6,16 @@
 // == i32_2 ============================================================================================================
 // =====================================================================================================================
 
+const i32& i32_2::operator[](const usize index) const {
+    return elements[index];
+}
+
+
+i32& i32_2::operator[](const usize index) {
+    return elements[index];
+}
+
+
 void operator+=(i32_2& vec, const i32_2& other) {
     vec.x += other.x;
     vec.y += other.y;
@@ -55,6 +65,11 @@ i32_2 operator/(const i32_2& vec, const i32 scalar) {
     i32_2 vec1(vec);
     vec1 /= scalar;
     return vec1;
+}
+
+
+i32_2::operator f32_2() const {
+    return f32_2{static_cast<f32>(x), static_cast<f32>(y)};
 }
 
 
@@ -121,6 +136,11 @@ f32_2 operator/(const f32_2 &vec, const f32 scalar) {
     f32_2 vec1(vec);
     vec1 /= scalar;
     return vec1;
+}
+
+
+f32_2::operator i32_2() const {
+    return i32_2{static_cast<i32>(x), static_cast<i32>(y)};
 }
 
 

@@ -84,7 +84,7 @@ void Application::update() {
                                                                    face_corners[2] - face_corners[0]);
             const Vector3 ray_to_face_corner = face_corners[0] - camera_position;
 
-            should_cull_face[face_index] = math::dot(face_normal_not_normalized, ray_to_face_corner) > 0;
+            should_cull_face[face_index] = math::dot(face_normal_not_normalized, ray_to_face_corner) >= 0;
             if (should_cull_face[face_index]) {
                 continue;
             }
@@ -129,8 +129,8 @@ void Application::render() {
             triangle[corner_index].y = static_cast<i32>(projected_face[corner_index].y);
         }
 
-        constexpr Color color = Color::white();
-        draw_triangle_wireframe(window, triangle, color);
+        draw_triangle_filled(window, triangle, Color::grey());
+        draw_triangle_wireframe(window, triangle, Color::green());
     }
 }
 
@@ -198,7 +198,9 @@ void rendering::draw_line(Window& window, const i32_2 from, const i32_2 to, cons
 
     Vector2 current_coord{static_cast<f32>(from.x), static_cast<f32>(from.y)};
 
-    for (i32 i = 0; i < largest_side_length; ++i) {
+    // NOTE: It is important that loop conidition is <= and not <, or we are missing the last pixel, creating artifacts
+    // when drawing triangles
+    for (i32 i = 0; i <= largest_side_length; ++i) {
         const i32_2 screen_coord{
             .x = static_cast<i32>(current_coord.x),
             .y = static_cast<i32>(current_coord.y),
@@ -215,4 +217,105 @@ void rendering::draw_triangle_wireframe(Window& window, const Triangle& triangle
     draw_line(window, triangle[0], triangle[1], color);
     draw_line(window, triangle[1], triangle[2], color);
     draw_line(window, triangle[2], triangle[0], color);
+}
+
+
+void rendering::draw_triangle_filled(Window& window, const Triangle& triangle, const Color color) {
+    // draw triangle with flat bottom from top to bottom
+    auto draw_bottom_flat = [&window, color](const Triangle& tri) -> void {
+        const i32_2 corner_a = tri[0]; // top
+        const i32_2 corner_b = tri[1]; // bottom 0
+        const i32_2 corner_c = tri[2]; // bottom 1
+
+        const f32_2 inverse_slopes{
+            static_cast<f32>(corner_b.x - corner_a.x) / static_cast<f32>(corner_b.y - corner_a.y),
+            static_cast<f32>(corner_c.x - corner_a.x) / static_cast<f32>(corner_c.y - corner_a.y),
+        };
+
+        f32_2 current_xs_f32s = f32_2::splat(static_cast<f32>(corner_a.x));
+
+        for (i32 scanline_y = corner_a.y; scanline_y <= corner_b.y; ++scanline_y) {
+            const i32_2 current_xs_i32 = static_cast<i32_2>(current_xs_f32s);
+
+            draw_line(window,
+                      {current_xs_i32[0], scanline_y},
+                      {current_xs_i32[1], scanline_y},
+                      color
+            );
+
+            current_xs_f32s += inverse_slopes;
+        }
+    };
+
+    // draw triangle with flat bottom from bottom to top
+    auto draw_top_flat = [&window, color](const Triangle& tri) -> void {
+        // draw fr
+        const i32_2 corner_a = tri[0]; // top 0
+        const i32_2 corner_b = tri[1]; // top 1
+        const i32_2 corner_c = tri[2]; // bottom
+
+        const f32_2 inverse_slopes{
+            static_cast<f32>(corner_c.x - corner_a.x) / static_cast<f32>(corner_c.y - corner_a.y),
+            static_cast<f32>(corner_c.x - corner_b.x) / static_cast<f32>(corner_c.y - corner_b.y),
+        };
+
+        f32_2 current_xs_f32s = f32_2::splat(static_cast<f32>(corner_c.x));
+
+        for (i32 scanline_y = corner_c.y; scanline_y > corner_a.y; --scanline_y) {
+            const i32_2 current_xs_i32 = static_cast<i32_2>(current_xs_f32s);
+
+            draw_line(window,
+                      {current_xs_i32[0], scanline_y},
+                      {current_xs_i32[1], scanline_y},
+                      color
+            );
+
+            current_xs_f32s -= inverse_slopes;
+        }
+    };
+
+
+    i32_2 corner_a = triangle[0];
+    i32_2 corner_b = triangle[1];
+    i32_2 corner_c = triangle[2];
+
+    // Sort by y. Positive y is down here. A->B->C, where A is the lowest Y-value.
+    if (corner_a.y > corner_b.y) std::swap(corner_a, corner_b);
+    if (corner_a.y > corner_c.y) std::swap(corner_a, corner_c);
+    if (corner_b.y > corner_c.y) std::swap(corner_b, corner_c);
+
+
+    // avoids division by zero in draw_top_flat
+    if (corner_b.y == corner_c.y) {
+        draw_bottom_flat(Triangle{corner_a, corner_b, corner_c});
+        return;
+    }
+
+    // avoids division by zero in draw_bottom_flat
+    if (corner_a.y == corner_b.y) {
+        draw_top_flat(Triangle{corner_a, corner_b, corner_c});
+        return;
+    }
+
+
+    // NOTE: Division by zero is possible in a case where
+    // corner_a.y == corner_b.y == corner_c.y may also be possible in a case where the triangle is directly
+    // aligned with the camera view.
+
+
+    i32_2 triangle_midpoint;
+    {
+        triangle_midpoint.x =
+            static_cast<i32>(
+                static_cast<f32>((corner_c.x - corner_a.x) * (corner_b.y - corner_a.y))
+                /
+                static_cast<f32>(corner_c.y - corner_a.y)
+            )
+            + corner_a.x;
+
+        triangle_midpoint.y = corner_b.y;
+    }
+
+    draw_bottom_flat(Triangle{corner_a, corner_b, triangle_midpoint});
+    draw_top_flat(Triangle{corner_b, triangle_midpoint, corner_c});
 }

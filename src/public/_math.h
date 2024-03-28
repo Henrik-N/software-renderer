@@ -16,6 +16,12 @@ struct i32_2 {
         };
     };
 
+    consteval static i32_2 zeroed() { return i32_2{.x = 0, .y = 0}; }
+    constexpr static i32_2 splat(const i32 scalar) { return i32_2{scalar, scalar}; }
+
+    const i32& operator[](usize index) const;
+    i32& operator[](usize index);
+
     // vector addition
     friend void operator+=(i32_2& vec, const i32_2& other);
     friend i32_2 operator+(const i32_2& vec, const i32_2& other);
@@ -31,6 +37,10 @@ struct i32_2 {
     // scalar division
     friend void operator/=(i32_2& vec, i32 scalar);
     friend i32_2 operator/(const i32_2& vec, i32 scalar);
+
+    // conversions
+    //
+    explicit operator struct f32_2() const;
 };
 
 
@@ -70,6 +80,10 @@ struct f32_2 {
     // scalar division
     friend void operator/=(f32_2& vec, f32 scalar);
     friend f32_2 operator/(const f32_2& vec, f32 scalar);
+
+    // conversions
+    //
+    explicit operator i32_2() const;
 };
 
 

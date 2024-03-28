@@ -43,4 +43,5 @@ namespace rendering {
     void draw_rect(Window& window, i32_2 coord, i32_2 rect, Color color);
     void draw_line(Window& window, i32_2 from, i32_2 to, Color color);
     void draw_triangle_wireframe(Window& window, const Triangle& triangle, Color color);
+    void draw_triangle_filled(Window& window, const Triangle& triangle, Color color);
 }
