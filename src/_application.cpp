@@ -1,6 +1,9 @@
 #include "_application.h"
 #include "_color.h"
 
+#include <random>
+
+
 // =====================================================================================================================
 // == Application ======================================================================================================
 // =====================================================================================================================
@@ -46,6 +49,19 @@ bool Application::setup() {
 
     const usize num_faces = mesh.faces.size();
     triangles_to_draw.reserve(num_faces);
+    triangle_depth_values.reserve(num_faces);
+    triangle_draw_order.reserve(num_faces);
+
+
+    triangle_draw_colors.resize(num_faces);
+    {
+        std::random_device random;
+        std::uniform_int_distribution<u8> dist{0, 255};
+        for (Color& col : triangle_draw_colors) {
+            col = Color::rgba(dist(random), dist(random), dist(random), 255);
+        }
+    }
+
     return true;
 }
 
@@ -57,6 +73,7 @@ void Application::update() {
     }
 
     triangles_to_draw.clear();
+    triangle_depth_values.clear();
 
     const f32 rot_angle = static_cast<f32>(math::tau) * t;
 
@@ -89,6 +106,9 @@ void Application::update() {
         }
 
 
+        f32& triangle_depth = triangle_depth_values.emplace_back();
+        triangle_depth = (face_corners[0].z + face_corners[1].z + face_corners[2].z); // /3.f,;
+
         Triangle& triangle = triangles_to_draw.emplace_back();
         for (usize corner_index = 0; corner_index < 3; ++corner_index) {
             Vector2 projected_corner = rendering::project_point(face_corners[corner_index], fov_factor);
@@ -98,6 +118,12 @@ void Application::update() {
             triangle[corner_index] = static_cast<i32_2>(projected_corner);
         }
     }
+
+    triangle_draw_order.resize(triangles_to_draw.size());
+    std::iota(triangle_draw_order.begin(), triangle_draw_order.end(), 0);
+    std::sort(triangle_draw_order.begin(), triangle_draw_order.end(), [&](const usize a, const usize b) -> bool {
+        return triangle_depth_values[a] > triangle_depth_values[b]; // larger z == draw first
+    });
 }
 
 
@@ -106,9 +132,11 @@ void Application::render() {
 
     draw_grid(window, 10, 10, Color::grey());
 
-    for (const Triangle& triangle : triangles_to_draw) {
-        draw_triangle_filled(window, triangle, Color::grey());
-        draw_triangle_wireframe(window, triangle, Color::green());
+    for (const usize draw_index : triangle_draw_order) {
+        const Triangle& triangle = triangles_to_draw[draw_index];
+        const Color draw_color = triangle_draw_colors[draw_index];
+        draw_triangle_filled(window, triangle, draw_color);
+        draw_triangle_wireframe(window, triangle, Color::white());
     }
 }
 

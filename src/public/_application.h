@@ -6,8 +6,9 @@
 #include "_mesh.h"
 #include "_time.h"
 #include "_window.h"
+#include "_color.h"
 
-constexpr bool enable_culling = true;
+constexpr bool enable_culling = false;
 
 using Triangle = std::array<i32_2, 3>;
 
@@ -23,6 +24,10 @@ struct Application {
     Mesh mesh;
 
     std::vector<Triangle> triangles_to_draw;
+    std::vector<f32> triangle_depth_values;
+    std::vector<usize> triangle_draw_order;
+
+    std::vector<Color> triangle_draw_colors;
 
     static bool init(Application& app);
     i32 run();
