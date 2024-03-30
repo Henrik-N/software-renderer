@@ -9,9 +9,9 @@
 
 constexpr bool enable_culling = true;
 
-struct Application {
-    using Projected_Face = std::array<Vector2, 3>;
+using Triangle = std::array<i32_2, 3>;
 
+struct Application {
     Window window;
     Time time;
 
@@ -22,8 +22,7 @@ struct Application {
 
     Mesh mesh;
 
-    std::vector<Projected_Face> projected_faces;
-    std::vector<bool> should_cull_face;
+    std::vector<Triangle> triangles_to_draw;
 
     static bool init(Application& app);
     i32 run();
@@ -36,8 +35,6 @@ private:
 
 
 namespace rendering {
-    using Triangle = std::array<i32_2, 3>;
-
     Vector2 project_point(const Vector3& point, f32 fov_factor);
     void draw_grid(Window& window, i32 x_step, i32 y_step, Color color);
     void draw_rect(Window& window, i32_2 coord, i32_2 rect, Color color);

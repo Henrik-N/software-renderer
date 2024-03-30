@@ -45,11 +45,7 @@ bool Application::setup() {
     }
 
     const usize num_faces = mesh.faces.size();
-    projected_faces.resize(num_faces);
-    if constexpr (enable_culling) {
-        should_cull_face.resize(num_faces);
-    }
-
+    triangles_to_draw.reserve(num_faces);
     return true;
 }
 
@@ -59,6 +55,8 @@ void Application::update() {
     if (t >= 1.f) {
         t = 0.f;
     }
+
+    triangles_to_draw.clear();
 
     const f32 rot_angle = static_cast<f32>(math::tau) * t;
 
@@ -84,27 +82,21 @@ void Application::update() {
                                                                    face_corners[2] - face_corners[0]);
             const Vector3 ray_to_face_corner = face_corners[0] - camera_position;
 
-            should_cull_face[face_index] = math::dot(face_normal_not_normalized, ray_to_face_corner) >= 0;
-            if (should_cull_face[face_index]) {
+            if (const bool should_cull_face = math::dot(face_normal_not_normalized, ray_to_face_corner) >= 0;
+                should_cull_face) {
                 continue;
             }
         }
 
-        // project
-        //
-        Projected_Face& projected_face = projected_faces[face_index];
 
-        usize corner_index = 0;
-        for (const Vector3& corner : face_corners) {
-            Vector2& projected_corner = projected_face[corner_index++];
-
-            projected_corner = rendering::project_point(corner, fov_factor);
-
+        Triangle& triangle = triangles_to_draw.emplace_back();
+        for (usize corner_index = 0; corner_index < 3; ++corner_index) {
+            Vector2 projected_corner = rendering::project_point(face_corners[corner_index], fov_factor);
             projected_corner.x += static_cast<f32>(window.width) / 2.f;
             projected_corner.y += static_cast<f32>(window.height) / 2.f;
-        }
 
-        projected_faces[face_index] = projected_face;
+            triangle[corner_index] = static_cast<i32_2>(projected_corner);
+        }
     }
 }
 
@@ -114,21 +106,7 @@ void Application::render() {
 
     draw_grid(window, 10, 10, Color::grey());
 
-    for (i32 face_index = 0; face_index < projected_faces.size(); ++face_index) {
-        if constexpr (enable_culling) {
-            if (should_cull_face[face_index]) {
-                continue;
-            }
-        }
-
-        const Projected_Face& projected_face = projected_faces[face_index];
-
-        std::array<i32_2, 3> triangle;
-        for (i32 corner_index = 0; corner_index < triangle.size(); ++corner_index) {
-            triangle[corner_index].x = static_cast<i32>(projected_face[corner_index].x);
-            triangle[corner_index].y = static_cast<i32>(projected_face[corner_index].y);
-        }
-
+    for (const Triangle& triangle : triangles_to_draw) {
         draw_triangle_filled(window, triangle, Color::grey());
         draw_triangle_wireframe(window, triangle, Color::green());
     }
