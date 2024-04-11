@@ -101,7 +101,7 @@ bool Mesh::load_from_obj(Mesh& mesh, std::string_view filename) {
         }
 
         if (buffer == "f") {
-            auto next_number_before_slash = [&] -> i32 {
+            auto next_number_before_slash = [&]() -> i32 {
                 line_stream >> buffer;
                 std::istringstream temp_stream{buffer};
                 std::getline(temp_stream, buffer, '/');
