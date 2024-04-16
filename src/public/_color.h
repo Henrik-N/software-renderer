@@ -1,6 +1,6 @@
 #pragma once
-
 #include "_common.h"
+
 
 struct Color {
     union {

@@ -1,9 +1,12 @@
 #pragma once
+
 #include "_common.h"
 
 #include <SDL2/SDL.h>
+#include <vector>
 
 struct Color;
+
 
 struct Window {
     i32 width;

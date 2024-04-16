@@ -1,8 +1,8 @@
 #pragma once
-
 #include "_common.h"
 
 #include <chrono>
+
 
 struct Time {
     using Clock = std::chrono::high_resolution_clock;

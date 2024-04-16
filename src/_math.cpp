@@ -2,243 +2,232 @@
 
 #include <cmath>
 
+
 // =====================================================================================================================
-// == i32_2 ============================================================================================================
+// == Vec2i ============================================================================================================
 // =====================================================================================================================
 
-const i32& i32_2::operator[](const usize index) const {
+i32 Vec2i::operator[](const usize index) const {
     return elements[index];
 }
 
 
-i32& i32_2::operator[](const usize index) {
+i32& Vec2i::operator[](const usize index) {
     return elements[index];
 }
 
 
-void operator+=(i32_2& vec, const i32_2& other) {
+void operator+=(Vec2i& vec, const Vec2i other) {
     vec.x += other.x;
     vec.y += other.y;
 }
 
 
-i32_2 operator+(const i32_2& vec, const i32_2& other) {
-    i32_2 vec1(vec);
-    vec1 += other;
-    return vec1;
+Vec2i operator+(Vec2i vec, const Vec2i other) {
+    vec += other;
+    return vec;
 }
 
 
-void operator-=(i32_2& vec, const i32_2& other) {
+void operator-=(Vec2i& vec, const Vec2i other) {
     vec.x -= other.x;
     vec.y -= other.y;
 }
 
 
-i32_2 operator-(const i32_2& vec, const i32_2& other) {
-    i32_2 vec1(vec);
-    vec1 -= other;
-    return vec1;
+Vec2i operator-(Vec2i vec, const Vec2i other) {
+    vec -= other;
+    return vec;
 }
 
 
-void operator*=(i32_2& vec, const i32 scalar) {
+void operator*=(Vec2i& vec, const i32 scalar) {
     vec.x *= scalar;
     vec.y *= scalar;
 }
 
 
-i32_2 operator*(const i32_2& vec, const i32 scalar) {
-    i32_2 vec1(vec);
-    vec1 *= scalar;
-    return vec1;
+Vec2i operator*(Vec2i vec, const i32 scalar) {
+    vec *= scalar;
+    return vec;
 }
 
 
-void operator/=(i32_2& vec, const i32 scalar) {
+void operator/=(Vec2i& vec, const i32 scalar) {
     vec.x /= scalar;
     vec.y /= scalar;
 }
 
 
-i32_2 operator/(const i32_2& vec, const i32 scalar) {
-    i32_2 vec1(vec);
-    vec1 /= scalar;
-    return vec1;
+Vec2i operator/(Vec2i vec, const i32 scalar) {
+    vec /= scalar;
+    return vec;
 }
 
 
-i32_2::operator f32_2() const {
-    return f32_2{static_cast<f32>(x), static_cast<f32>(y)};
+Vec2i::operator Vec2() const {
+    return Vec2{static_cast<f32>(x), static_cast<f32>(y)};
 }
 
 
 // =====================================================================================================================
-// == f32_2 ============================================================================================================
+// == Vec2 ============================================================================================================
 // =====================================================================================================================
 
-const f32& f32_2::operator[](const size_t index) const {
+f32 Vec2::operator[](const usize index) const {
     return elements[index];
 }
 
 
-f32& f32_2::operator[](const size_t index) {
+f32& Vec2::operator[](const usize index) {
     return elements[index];
 }
 
 
-void operator+=(f32_2& vec, const f32_2& other) {
+void operator+=(Vec2& vec, const Vec2 other) {
     vec.x += other.x;
     vec.y += other.y;
 }
 
 
-f32_2 operator+(const f32_2& vec, const f32_2& other) {
-    f32_2 vec1(vec);
-    vec1 += other;
-    return vec1;
+Vec2 operator+(Vec2 vec, const Vec2 other) {
+    vec += other;
+    return vec;
 }
 
 
-void operator-=(f32_2& vec, const f32_2& other) {
+void operator-=(Vec2& vec, const Vec2 other) {
     vec.x -= other.x;
     vec.y -= other.y;
 }
 
 
-f32_2 operator-(const f32_2& vec, const f32_2& other) {
-    f32_2 vec1(vec);
-    vec1 -= other;
-    return vec1;
+Vec2 operator-(Vec2 vec, const Vec2 other) {
+    vec -= other;
+    return vec;
 }
 
 
-void operator*=(f32_2 &vec, const f32 scalar) {
+void operator*=(Vec2 &vec, const f32 scalar) {
     vec.x *= scalar;
     vec.y *= scalar;
 }
 
 
-f32_2 operator*(const f32_2 &vec, const f32 scalar) {
-    f32_2 vec1(vec);
-    vec1 *= scalar;
-    return vec1;
+Vec2 operator*(Vec2 vec, const f32 scalar) {
+    vec *= scalar;
+    return vec;
 }
 
 
-void operator/=(f32_2 &vec, const f32 scalar) {
+void operator/=(Vec2 &vec, const f32 scalar) {
     vec.x /= scalar;
     vec.y /= scalar;
 }
 
 
-f32_2 operator/(const f32_2 &vec, const f32 scalar) {
-    f32_2 vec1(vec);
-    vec1 /= scalar;
-    return vec1;
+Vec2 operator/(Vec2 vec, const f32 scalar) {
+    vec /= scalar;
+    return vec;
 }
 
 
-f32_2::operator i32_2() const {
-    return i32_2{static_cast<i32>(x), static_cast<i32>(y)};
+Vec2::operator Vec2i() const {
+    return Vec2i{static_cast<i32>(x), static_cast<i32>(y)};
 }
 
 
 // =====================================================================================================================
-// == f32_3 ============================================================================================================
+// == Vec3 ============================================================================================================
 // =====================================================================================================================
 
-f32_3 f32_3::from_vec4(const f32_4& vec) {
-    return f32_3{vec.x, vec.y, vec.z};
+Vec3 Vec3::from_vec4(const Vec4& vec) {
+    return Vec3{vec.x, vec.y, vec.z};
 }
 
 
-const f32& f32_3::operator[](const size_t index) const {
+f32 Vec3::operator[](const usize index) const {
     return elements[index];
 }
 
 
-f32& f32_3::operator[](const size_t index) {
+f32& Vec3::operator[](const usize index) {
     return elements[index];
 }
 
 
-void operator+=(f32_3& vec, const f32_3& other) {
+void operator+=(Vec3& vec, const Vec3 other) {
     vec.x += other.x;
     vec.y += other.y;
     vec.z += other.z;
 }
 
 
-f32_3 operator+(const f32_3& vec, const f32_3& other) {
-    f32_3 vec1(vec);
-    vec1 += other;
-    return vec1;
+Vec3 operator+(Vec3 vec, const Vec3 other) {
+    vec += other;
+    return vec;
 }
 
 
-void operator-=(f32_3& vec, const f32_3& other) {
+void operator-=(Vec3& vec, const Vec3 other) {
     vec.x -= other.x;
     vec.y -= other.y;
     vec.z -= other.z;
 }
 
 
-f32_3 operator-(const f32_3& vec, const f32_3& other) {
-    f32_3 vec1(vec);
-    vec1 -= other;
-    return vec1;
+Vec3 operator-(Vec3 vec, const Vec3 other) {
+    vec -= other;
+    return vec;
 }
 
 
-void operator*=(f32_3 &vec, const f32 scalar) {
+void operator*=(Vec3 &vec, const f32 scalar) {
     vec.x *= scalar;
     vec.y *= scalar;
     vec.z *= scalar;
 }
 
 
-f32_3 operator*(const f32_3 &vec, const f32 scalar) {
-    f32_3 vec1{vec};
-    vec1 *= scalar;
-    return vec1;
+Vec3 operator*(Vec3 vec, const f32 scalar) {
+    vec *= scalar;
+    return vec;
 }
 
 
-void operator/=(f32_3 &vec, const f32 scalar) {
+void operator/=(Vec3 &vec, const f32 scalar) {
     vec.x /= scalar;
     vec.y /= scalar;
     vec.z /= scalar;
 }
 
 
-f32_3 operator/(const f32_3 &vec, const f32 scalar) {
-    f32_3 vec1{vec};
-    vec1 /= scalar;
-    return vec1;
+Vec3 operator/(Vec3 vec, const f32 scalar) {
+    vec /= scalar;
+    return vec;
 }
 
 
 // =====================================================================================================================
-// == f32_4 ============================================================================================================
+// == Vec4 ============================================================================================================
 // =====================================================================================================================
 
-f32_4 f32_4::from_vec3(const f32_3& vec, f32 w) {
-    return f32_4{vec.x, vec.y, vec.z, w};
+Vec4 Vec4::from_vec3(const Vec3& vec, f32 w) {
+    return Vec4{vec.x, vec.y, vec.z, w};
 }
 
 
-const f32& f32_4::operator[](const usize index) const {
+f32 Vec4::operator[](const usize index) const {
     return elements[index];
 }
 
 
-f32& f32_4::operator[](const usize index) {
+f32& Vec4::operator[](const usize index) {
     return elements[index];
 }
 
 
-void operator+=(f32_4& vec, const f32_4& other) {
+void operator+=(Vec4& vec, const Vec4 other) {
     vec.x += other.x;
     vec.y += other.y;
     vec.z += other.z;
@@ -246,14 +235,13 @@ void operator+=(f32_4& vec, const f32_4& other) {
 }
 
 
-f32_4 operator+(const f32_4& vec, const f32_4& other) {
-    f32_4 vec1{vec};
-    vec1 += other;
-    return vec1;
+Vec4 operator+(Vec4 vec, const Vec4 other) {
+    vec += other;
+    return vec;
 }
 
 
-void operator-=(f32_4& vec, const f32_4& other) {
+void operator-=(Vec4& vec, const Vec4 other) {
     vec.x -= other.x;
     vec.y -= other.y;
     vec.z -= other.z;
@@ -261,14 +249,13 @@ void operator-=(f32_4& vec, const f32_4& other) {
 }
 
 
-f32_4 operator-(const f32_4& vec, const f32_4& other) {
-    f32_4 vec1{vec};
-    vec1 += other;
-    return vec1;
+Vec4 operator-(Vec4 vec, const Vec4 other) {
+    vec -= other;
+    return vec;
 }
 
 
-void operator*=(f32_4& vec, f32 scalar) {
+void operator*=(Vec4& vec, const f32 scalar) {
     vec.x *= scalar;
     vec.y *= scalar;
     vec.z *= scalar;
@@ -276,14 +263,13 @@ void operator*=(f32_4& vec, f32 scalar) {
 }
 
 
-f32_4 operator*(const f32_4& vec, f32 scalar) {
-    f32_4 vec1{vec};
-    vec1 *= scalar;
-    return vec1;
+Vec4 operator*(Vec4 vec, const f32 scalar) {
+    vec *= scalar;
+    return vec;
 }
 
 
-void operator/=(f32_4& vec, f32 scalar) {
+void operator/=(Vec4& vec, const f32 scalar) {
     vec.x /= scalar;
     vec.y /= scalar;
     vec.z /= scalar;
@@ -291,10 +277,9 @@ void operator/=(f32_4& vec, f32 scalar) {
 }
 
 
-f32_4 operator/(const f32_4& vec, f32 scalar) {
-    f32_4 vec1{vec};
-    vec1 /= scalar;
-    return vec1;
+Vec4 operator/(Vec4 vec, const f32 scalar) {
+    vec /= scalar;
+    return vec;
 }
 
 
@@ -302,7 +287,7 @@ f32_4 operator/(const f32_4& vec, f32 scalar) {
 // == Mat4 =============================================================================================================
 // =====================================================================================================================
 
-Mat4 Mat4::scale(const f32_3& s) {
+Mat4 Mat4::scale(const Vec3 s) {
     Mat4 mat; 
     mat.rows[0] = {s.x, 0,   0,   0}; 
     mat.rows[1] = {0,   s.y, 0,   0}; 
@@ -312,7 +297,7 @@ Mat4 Mat4::scale(const f32_3& s) {
 }
 
 
-Mat4 Mat4::translation(const f32_3& t) {
+Mat4 Mat4::translation(const Vec3 t) {
     Mat4 mat; 
     mat.rows[0] = {1, 0, 0, t.x}; 
     mat.rows[1] = {0, 1, 0, t.y}; 
@@ -322,7 +307,7 @@ Mat4 Mat4::translation(const f32_3& t) {
 }
 
 
-Mat4 Mat4::rot_x(float angle) {
+Mat4 Mat4::rot_x(const float angle) {
     Mat4 mat;
     mat.rows[0] = {1,  0,               0,               0};
     mat.rows[1] = {0,  std::cos(angle), std::sin(angle), 0};
@@ -332,7 +317,7 @@ Mat4 Mat4::rot_x(float angle) {
 }
 
 
-Mat4 Mat4::rot_y(float angle) {
+Mat4 Mat4::rot_y(const float angle) {
     Mat4 mat;
     mat.rows[0] = {std::cos(angle), 0, -std::sin(angle), 0};
     mat.rows[1] = {0,               1, 0,                0};
@@ -342,7 +327,7 @@ Mat4 Mat4::rot_y(float angle) {
 }
 
 
-Mat4 Mat4::rot_z(float angle) {
+Mat4 Mat4::rot_z(const float angle) {
     Mat4 mat;
     mat.rows[0] = {std::cos(angle), -std::sin(angle), 0, 0};
     mat.rows[1] = {std::sin(angle),  std::cos(angle), 0, 0};
@@ -352,12 +337,12 @@ Mat4 Mat4::rot_z(float angle) {
 }
 
 
-const f32_4& Mat4::operator[](const usize row_index) const {
+const Vec4& Mat4::operator[](const usize row_index) const {
     return rows[row_index];
 }
 
 
-f32_4& Mat4::operator[](const usize row_index){
+Vec4& Mat4::operator[](const usize row_index){
     return rows[row_index];
 }
 
@@ -376,8 +361,8 @@ Mat4 operator*(const Mat4& a, const Mat4& b) {
 }
 
 
-f32_4 operator*(const Mat4& mat, const f32_4& vec) {
-    f32_4 result;
+Vec4 operator*(const Mat4& mat, const Vec4 vec) {
+    Vec4 result;
     result.x = math::dot(mat.rows[0], vec);
     result.y = math::dot(mat.rows[1], vec);
     result.z = math::dot(mat.rows[2], vec);
@@ -390,61 +375,61 @@ f32_4 operator*(const Mat4& mat, const f32_4& vec) {
 // == namespace math ===================================================================================================
 // =====================================================================================================================
 
-f32 math::sq_magnitude(const Vector2& vec) {
+f32 math::sq_magnitude(const Vec2 vec) {
     return (vec.x * vec.x) + (vec.y * vec.y);
 }
 
 
-f32 math::magnitude(const Vector2& vec) {
+f32 math::magnitude(const Vec2 vec) {
     return std::sqrt(sq_magnitude(vec));
 }
 
 
-f32 math::sq_magnitude(const Vector3& vec) {
+f32 math::sq_magnitude(const Vec3 vec) {
     return (vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z);
 }
 
 
-f32 math::magnitude(const Vector3& vec) {
+f32 math::magnitude(const Vec3 vec) {
     return std::sqrt(sq_magnitude(vec));
 }
 
 
-Vector2 math::normalized(const Vector2& vec) {
+Vec2 math::normalized(const Vec2 vec) {
     const f32 sq_length = sq_magnitude(vec);
     if (sq_length == 0.f) {
-        return Vector2::zeroed();
+        return Vec2::zeroed();
     }
     return vec / std::sqrt(sq_length);
 }
 
 
-Vector3 math::normalized(const Vector3& vec) {
+Vec3 math::normalized(const Vec3 vec) {
     const f32 sq_length = sq_magnitude(vec);
     if (sq_length == 0.f) {
-        return Vector3::zeroed();
+        return Vec3::zeroed();
     }
     return vec / std::sqrt(sq_length);
 }
 
 
-f32 math::dot(const Vector2& a, const Vector2& b) {
+f32 math::dot(const Vec2 a, const Vec2 b) {
     return a.x * b.x + a.y * b.y;
 }
 
 
-f32 math::dot(const Vector3& a, const Vector3& b) {
+f32 math::dot(const Vec3 a, const Vec3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 
-f32 math::dot(const Vector4& a, const Vector4& b) {
+f32 math::dot(const Vec4 a, const Vec4 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
 
-Vector3 math::cross(const Vector3& a, const Vector3& b) {
-    return Vector3{
+Vec3 math::cross(const Vec3 a, const Vec3 b) {
+    return Vec3{
         a.y * b.z - a.z * b.y,
         a.z * b.x - a.x * b.z,
         a.x * b.y - a.y * b.x,
@@ -452,8 +437,8 @@ Vector3 math::cross(const Vector3& a, const Vector3& b) {
 }
 
 
-Vector3 math::rot_x(const Vector3& vec, const f32 angle) {
-    return Vector3{
+Vec3 math::rot_x(const Vec3 vec, const f32 angle) {
+    return Vec3{
         vec.x,
         vec.y * std::cos(angle) + vec.z * std::sin(angle),
         vec.z * std::cos(angle) - vec.y * std::sin(angle),
@@ -461,8 +446,8 @@ Vector3 math::rot_x(const Vector3& vec, const f32 angle) {
 }
 
 
-Vector3 math::rot_y(const Vector3& vec, const f32 angle) {
-    return Vector3{
+Vec3 math::rot_y(const Vec3 vec, const f32 angle) {
+    return Vec3{
         vec.x * std::cos(angle) - vec.z * std::sin(angle),
         vec.y,
         vec.z * std::cos(angle) + vec.x * std::sin(angle),
@@ -470,8 +455,8 @@ Vector3 math::rot_y(const Vector3& vec, const f32 angle) {
 }
 
 
-Vector3 math::rot_z(const Vector3& vec, const f32 angle) {
-    return Vector3{
+Vec3 math::rot_z(const Vec3 vec, const f32 angle) {
+    return Vec3{
         vec.x * std::cos(angle) - vec.y * std::sin(angle),
         vec.y * std::cos(angle) + vec.x * std::sin(angle),
         vec.z

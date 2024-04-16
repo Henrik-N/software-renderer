@@ -3,6 +3,7 @@
 #include "_math.h"
 
 #include <random>
+#include <algorithm>
 
 
 // =====================================================================================================================
@@ -18,7 +19,7 @@ bool Application::init(Application& app) {
 
     app.fov_factor = 600.f;
 
-    app.camera_position = Vector3{0, 0, 0};
+    app.camera_position = Vec3{0, 0, 0};
 
     app.t = 0.f;
 
@@ -54,6 +55,7 @@ bool Application::setup() {
     triangle_draw_order.reserve(num_faces);
 
 
+    // Generate some random colors just to have something for now
     triangle_draw_colors.resize(num_faces);
     {
         std::random_device random;
@@ -85,29 +87,30 @@ void Application::update() {
     world_matrix = Mat4::rot_y(rot_angle) * world_matrix;
     world_matrix = Mat4::rot_z(rot_angle) * world_matrix;
     world_matrix = Mat4::translation({1.f, 1.f, 1.f}) * world_matrix;
-
+   
 
     for (usize face_index = 0; face_index < mesh.faces.size(); ++face_index) {
-        Vector3 face_corners[3]{
+        Vec3 face_corners[3]{
             mesh.vertices[mesh.faces[face_index][0]],
             mesh.vertices[mesh.faces[face_index][1]],
             mesh.vertices[mesh.faces[face_index][2]],
         };
 
-        // transform
-        //
-        for (Vector3& corner : face_corners) {
-            corner = Vector3::from_vec4(world_matrix * 
-                                        Vector4::from_vec3(corner, 1.f)
-                                        );
+        // Transformation
+        for (Vec3& corner : face_corners) {
+            corner = Vec3::from_vec4(world_matrix * 
+                                     Vec4::from_vec3(corner, 1.f)
+                                     );
             corner.z += 5.f;
         }
 
-        // temporary culling solution
+
+        // Temporary culling solution
         if constexpr (enable_culling) {
-            const Vector3 face_normal_not_normalized = math::cross(face_corners[1] - face_corners[0],
-                                                                   face_corners[2] - face_corners[0]);
-            const Vector3 ray_to_face_corner = face_corners[0] - camera_position;
+            const Vec3 face_normal_not_normalized = math::cross(face_corners[1] - face_corners[0],
+                                                                face_corners[2] - face_corners[0]
+                                                                );
+            const Vec3 ray_to_face_corner = face_corners[0] - camera_position;
 
             if (const bool should_cull_face = math::dot(face_normal_not_normalized, ray_to_face_corner) >= 0;
                 should_cull_face) {
@@ -116,19 +119,24 @@ void Application::update() {
         }
 
 
+        // Temporary depth buffer
         f32& triangle_depth = triangle_depth_values.emplace_back();
         triangle_depth = (face_corners[0].z + face_corners[1].z + face_corners[2].z); // /3.f,;
 
+
+        // Projection
         Triangle& triangle = triangles_to_draw.emplace_back();
         for (usize corner_index = 0; corner_index < 3; ++corner_index) {
-            Vector2 projected_corner = rendering::project_point(face_corners[corner_index], fov_factor);
+            Vec2 projected_corner = rendering::project_point(face_corners[corner_index], fov_factor);
             projected_corner.x += static_cast<f32>(window.width) / 2.f;
             projected_corner.y += static_cast<f32>(window.height) / 2.f;
 
-            triangle[corner_index] = static_cast<i32_2>(projected_corner);
+            triangle[corner_index] = static_cast<Vec2i>(projected_corner);
         }
     }
 
+
+    // Calculate draw order based on depth values
     triangle_draw_order.resize(triangles_to_draw.size());
     std::iota(triangle_draw_order.begin(), triangle_draw_order.end(), 0);
     std::sort(triangle_draw_order.begin(), triangle_draw_order.end(), [&](const usize a, const usize b) -> bool {
@@ -155,10 +163,10 @@ void Application::render() {
 // == namespace rendering ==============================================================================================
 // =====================================================================================================================
 
-Vector2 rendering::project_point(const Vector3& point, const f32 fov_factor) {
+Vec2 rendering::project_point(const Vec3 point, const f32 fov_factor) {
     // At this point, everything will be presented 1:1 onto the screen
     // If the point's position was (1, 1, 1) and we present it as is, the final pixel location will be (1, 1)
-    Vector2 pixel_coord{point.x, point.y};
+    Vec2 pixel_coord{point.x, point.y};
 
     // With a fov factor of 100, the final pixel location of that same point will be (100, 100)
     pixel_coord *= fov_factor;
@@ -183,12 +191,12 @@ void rendering::draw_grid(Window& window, const i32 x_step, const i32 y_step, co
 }
 
 
-void rendering::draw_rect(Window& window, const i32_2 coord, const i32_2 rect, const Color color) {
-    i32_2 start;
+void rendering::draw_rect(Window& window, const Vec2i coord, const Vec2i rect, const Color color) {
+    Vec2i start;
     start.x = std::max(0, std::min(coord.x, window.width));
     start.y = std::max(0, std::min(coord.y, window.height));
 
-    i32_2 end;
+    Vec2i end;
     end.x = std::max(0, std::min(coord.x + rect.width, window.width));
     end.y = std::max(0, std::min(coord.y + rect.height, window.height));
 
@@ -200,24 +208,24 @@ void rendering::draw_rect(Window& window, const i32_2 coord, const i32_2 rect, c
 }
 
 
-void rendering::draw_line(Window& window, const i32_2 from, const i32_2 to, const Color color) {
-    const i32_2 delta = to - from;
+void rendering::draw_line(Window& window, const Vec2i from, const Vec2i to, const Color color) {
+    const Vec2i delta = to - from;
     const i32 largest_side_length = std::max(std::abs(delta.x), std::abs(delta.y));
     if (largest_side_length == 0) {
         return;
     }
 
-    const Vector2 step{
+    const Vec2 step{
         static_cast<f32>(delta.x) / static_cast<f32>(largest_side_length),
         static_cast<f32>(delta.y) / static_cast<f32>(largest_side_length),
     };
 
-    Vector2 current_coord{static_cast<f32>(from.x), static_cast<f32>(from.y)};
+    Vec2 current_coord{static_cast<f32>(from.x), static_cast<f32>(from.y)};
 
     // NOTE: It is important that loop conidition is <= and not <, or we are missing the last pixel, creating artifacts
     // when drawing triangles
     for (i32 i = 0; i <= largest_side_length; ++i) {
-        const i32_2 screen_coord{
+        const Vec2i screen_coord{
             .x = static_cast<i32>(current_coord.x),
             .y = static_cast<i32>(current_coord.y),
         };
@@ -237,63 +245,62 @@ void rendering::draw_triangle_wireframe(Window& window, const Triangle& triangle
 
 
 void rendering::draw_triangle_filled(Window& window, const Triangle& triangle, const Color color) {
-    // draw triangle with flat bottom from top to bottom
+    // Draw triangle with flat bottom from top to bottom
     auto draw_bottom_flat = [&window, color](const Triangle& tri) -> void {
-        const i32_2 corner_a = tri[0]; // top
-        const i32_2 corner_b = tri[1]; // bottom 0
-        const i32_2 corner_c = tri[2]; // bottom 1
+        const Vec2i corner_a = tri[0]; // top
+        const Vec2i corner_b = tri[1]; // bottom 0
+        const Vec2i corner_c = tri[2]; // bottom 1
 
-        const f32_2 inverse_slopes{
+        const Vec2 inverse_slopes{
             static_cast<f32>(corner_b.x - corner_a.x) / static_cast<f32>(corner_b.y - corner_a.y),
             static_cast<f32>(corner_c.x - corner_a.x) / static_cast<f32>(corner_c.y - corner_a.y),
         };
 
-        f32_2 current_xs_f32s = f32_2::splat(static_cast<f32>(corner_a.x));
+        Vec2 current_xs_f32s = Vec2::splat(static_cast<f32>(corner_a.x));
 
         for (i32 scanline_y = corner_a.y; scanline_y <= corner_b.y; ++scanline_y) {
-            const i32_2 current_xs_i32 = static_cast<i32_2>(current_xs_f32s);
+            const Vec2i current_xs_i32 = static_cast<Vec2i>(current_xs_f32s);
 
             draw_line(window,
                       {current_xs_i32[0], scanline_y},
                       {current_xs_i32[1], scanline_y},
                       color
-            );
+                      );
 
             current_xs_f32s += inverse_slopes;
         }
     };
 
-    // draw triangle with flat bottom from bottom to top
+    // Draw triangle with flat bottom from bottom to top
     auto draw_top_flat = [&window, color](const Triangle& tri) -> void {
-        // draw fr
-        const i32_2 corner_a = tri[0]; // top 0
-        const i32_2 corner_b = tri[1]; // top 1
-        const i32_2 corner_c = tri[2]; // bottom
+        const Vec2i corner_a = tri[0]; // top 0
+        const Vec2i corner_b = tri[1]; // top 1
+        const Vec2i corner_c = tri[2]; // bottom
 
-        const f32_2 inverse_slopes{
+        const Vec2 inverse_slopes{
             static_cast<f32>(corner_c.x - corner_a.x) / static_cast<f32>(corner_c.y - corner_a.y),
             static_cast<f32>(corner_c.x - corner_b.x) / static_cast<f32>(corner_c.y - corner_b.y),
         };
 
-        f32_2 current_xs_f32s = f32_2::splat(static_cast<f32>(corner_c.x));
+        Vec2 current_xs_f32s = Vec2::splat(static_cast<f32>(corner_c.x));
 
         for (i32 scanline_y = corner_c.y; scanline_y > corner_a.y; --scanline_y) {
-            const i32_2 current_xs_i32 = static_cast<i32_2>(current_xs_f32s);
+            const Vec2i current_xs_i32 = static_cast<Vec2i>(current_xs_f32s);
 
             draw_line(window,
                       {current_xs_i32[0], scanline_y},
                       {current_xs_i32[1], scanline_y},
                       color
-            );
+                      );
 
             current_xs_f32s -= inverse_slopes;
         }
     };
 
 
-    i32_2 corner_a = triangle[0];
-    i32_2 corner_b = triangle[1];
-    i32_2 corner_c = triangle[2];
+    Vec2i corner_a = triangle[0];
+    Vec2i corner_b = triangle[1];
+    Vec2i corner_c = triangle[2];
 
     // Sort by y. Positive y is down here. A->B->C, where A is the lowest Y-value.
     if (corner_a.y > corner_b.y) std::swap(corner_a, corner_b);
@@ -301,25 +308,24 @@ void rendering::draw_triangle_filled(Window& window, const Triangle& triangle, c
     if (corner_b.y > corner_c.y) std::swap(corner_b, corner_c);
 
 
-    // avoids division by zero in draw_top_flat
+    // Avoid division by zero in draw_top_flat
     if (corner_b.y == corner_c.y) {
         draw_bottom_flat(Triangle{corner_a, corner_b, corner_c});
         return;
     }
 
-    // avoids division by zero in draw_bottom_flat
+    // Avoid division by zero in draw_bottom_flat
     if (corner_a.y == corner_b.y) {
         draw_top_flat(Triangle{corner_a, corner_b, corner_c});
         return;
     }
 
 
-    // NOTE: Division by zero is possible in a case where
-    // corner_a.y == corner_b.y == corner_c.y may also be possible in a case where the triangle is directly
-    // aligned with the camera view.
+    // NOTE/TODO: Division by zero may be possible when triangle is directly 
+    // aligned with the camera view corner_a.y == corner_b.y == corner_c.y 
 
 
-    i32_2 triangle_midpoint;
+    Vec2i triangle_midpoint;
     {
         triangle_midpoint.x =
             static_cast<i32>(

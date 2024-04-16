@@ -1,22 +1,24 @@
 #pragma once
 
 #include "_common.h"
-
 #include "_math.h"
 #include "_mesh.h"
 #include "_time.h"
 #include "_window.h"
 #include "_color.h"
 
+
 constexpr bool enable_culling = false;
 
-using Triangle = std::array<i32_2, 3>;
+
+using Triangle = std::array<Vec2i, 3>;
+
 
 struct Application {
     Window window;
     Time time;
 
-    Vector3 camera_position;
+    Vec3 camera_position;
 
     f32 fov_factor;
     f32 t;
@@ -40,10 +42,10 @@ private:
 
 
 namespace rendering {
-    Vector2 project_point(const Vector3& point, f32 fov_factor);
+    Vec2 project_point(Vec3 point, f32 fov_factor);
     void draw_grid(Window& window, i32 x_step, i32 y_step, Color color);
-    void draw_rect(Window& window, i32_2 coord, i32_2 rect, Color color);
-    void draw_line(Window& window, i32_2 from, i32_2 to, Color color);
+    void draw_rect(Window& window, Vec2i coord, Vec2i rect, Color color);
+    void draw_line(Window& window, Vec2i from, Vec2i to, Color color);
     void draw_triangle_wireframe(Window& window, const Triangle& triangle, Color color);
     void draw_triangle_filled(Window& window, const Triangle& triangle, Color color);
 }

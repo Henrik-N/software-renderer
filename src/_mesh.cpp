@@ -1,8 +1,10 @@
 #include "_mesh.h"
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
+
 
 // =====================================================================================================================
 // == Util =============================================================================================================
@@ -93,7 +95,7 @@ bool Mesh::load_from_obj(Mesh& mesh, std::string_view filename) {
         line_stream >> buffer;
 
         if (buffer == "v") {
-            Vector3 vertex{};
+            Vec3 vertex{};
             line_stream >> vertex.x >> vertex.y >> vertex.z;
 
             mesh.vertices.emplace_back(vertex);
@@ -129,7 +131,7 @@ bool Mesh::load_from_obj(Mesh& mesh, std::string_view filename) {
 
 
 void Mesh::log() {
-    for (const Vector3& vertex : vertices) {
+    for (const Vec3& vertex : vertices) {
         std::cout << "v " << vertex.x << " " << vertex.y << " " << vertex.z << "\n";
     }
 

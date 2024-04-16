@@ -1,7 +1,8 @@
 #pragma once
 #include "_common.h"
 
-struct i32_2 {
+
+struct Vec2i {
     union {
         i32 elements[2]{};
 
@@ -16,35 +17,35 @@ struct i32_2 {
         };
     };
 
-    consteval static i32_2 zeroed() { return i32_2{.x = 0, .y = 0}; }
-    constexpr static i32_2 splat(const i32 scalar) { return i32_2{scalar, scalar}; }
+    consteval static Vec2i zeroed() { return Vec2i{.x = 0, .y = 0}; }
+    constexpr static Vec2i splat(const i32 scalar) { return Vec2i{scalar, scalar}; }
 
-    const i32& operator[](usize index) const;
+    i32 operator[](usize index) const;
     i32& operator[](usize index);
 
     // vector addition
-    friend void operator+=(i32_2& vec, const i32_2& other);
-    friend i32_2 operator+(const i32_2& vec, const i32_2& other);
+    friend void operator+=(Vec2i& vec, Vec2i other);
+    friend Vec2i operator+(Vec2i vec, Vec2i other);
 
     // vector subtraction
-    friend void operator-=(i32_2& vec, const i32_2& other);
-    friend i32_2 operator-(const i32_2& vec, const i32_2& other);
+    friend void operator-=(Vec2i& vec, Vec2i other);
+    friend Vec2i operator-(Vec2i vec, Vec2i other);
 
     // scalar multiplication
-    friend void operator*=(i32_2& vec, i32 scalar);
-    friend i32_2 operator*(const i32_2& vec, i32 scalar);
+    friend void operator*=(Vec2i& vec, i32 scalar);
+    friend Vec2i operator*(Vec2i vec, i32 scalar);
 
     // scalar division
-    friend void operator/=(i32_2& vec, i32 scalar);
-    friend i32_2 operator/(const i32_2& vec, i32 scalar);
+    friend void operator/=(Vec2i& vec, i32 scalar);
+    friend Vec2i operator/(Vec2i vec, i32 scalar);
 
     // conversions
     //
-    explicit operator struct f32_2() const;
+    explicit operator struct Vec2() const;
 };
 
 
-struct f32_2 {
+struct Vec2 {
     union {
         f32 elements[2]{};
 
@@ -59,41 +60,38 @@ struct f32_2 {
         };
     };
 
-    consteval static f32_2 zeroed() { return f32_2{.x = 0, .y = 0}; }
-    constexpr static f32_2 splat(const f32 scalar) { return f32_2{scalar, scalar}; }
+    consteval static Vec2 zeroed() { return Vec2{.x = 0, .y = 0}; }
+    constexpr static Vec2 splat(const f32 scalar) { return Vec2{scalar, scalar}; }
 
-    const f32& operator[](size_t index) const;
-    f32& operator[](size_t index);
+    f32 operator[](usize index) const;
+    f32& operator[](usize index);
 
     // vector addition
-    friend void operator+=(f32_2& vec, const f32_2& other);
-    friend f32_2 operator+(const f32_2& vec, const f32_2& other);
+    friend void operator+=(Vec2& vec, Vec2 other);
+    friend Vec2 operator+(Vec2 vec, Vec2 other);
 
     // vector subtraction
-    friend void operator-=(f32_2& vec, const f32_2& other);
-    friend f32_2 operator-(const f32_2& vec, const f32_2& other);
+    friend void operator-=(Vec2& vec, Vec2 other);
+    friend Vec2 operator-(Vec2 vec, Vec2 other);
 
     // scalar multiplication
-    friend void operator*=(f32_2& vec, f32 scalar);
-    friend f32_2 operator*(const f32_2& vec, f32 scalar);
+    friend void operator*=(Vec2& vec, f32 scalar);
+    friend Vec2 operator*(Vec2 vec, f32 scalar);
 
     // scalar division
-    friend void operator/=(f32_2& vec, f32 scalar);
-    friend f32_2 operator/(const f32_2& vec, f32 scalar);
+    friend void operator/=(Vec2& vec, f32 scalar);
+    friend Vec2 operator/(Vec2 vec, f32 scalar);
 
     // conversions
     //
-    explicit operator i32_2() const;
+    explicit operator Vec2i() const;
 };
 
 
-using Vector2 = f32_2;
+struct Vec4; 
 
 
-struct f32_4; 
-
-
-struct f32_3 {
+struct Vec3 {
     union {
         f32 elements[3]{};
 
@@ -104,36 +102,33 @@ struct f32_3 {
         };
     };
 
-    static consteval f32_3 zeroed() { return f32_3{0, 0, 0}; }
-    static constexpr f32_3 splat(const f32 scalar) { return f32_3{scalar, scalar, scalar}; }
+    static consteval Vec3 zeroed() { return Vec3{0, 0, 0}; }
+    static constexpr Vec3 splat(const f32 scalar) { return Vec3{scalar, scalar, scalar}; }
 
-    static f32_3 from_vec4(const f32_4& vec);
+    static Vec3 from_vec4(const Vec4& vec);
 
-    const f32& operator[](size_t index) const;
-    f32& operator[](size_t index);
+    f32 operator[](usize index) const;
+    f32& operator[](usize index);
 
     // vector addition
-    friend void operator+=(f32_3& vec, const f32_3& other);
-    friend f32_3 operator+(const f32_3& vec, const f32_3& other);
+    friend void operator+=(Vec3& vec, Vec3 other);
+    friend Vec3 operator+(Vec3 vec, Vec3 other);
 
     // vector subtraction
-    friend void operator-=(f32_3& vec, const f32_3& other);
-    friend f32_3 operator-(const f32_3& vec, const f32_3& other);
+    friend void operator-=(Vec3& vec, Vec3 other);
+    friend Vec3 operator-(Vec3 vec, Vec3 other);
 
     // scalar multiplication
-    friend void operator*=(f32_3& vec, f32 scalar);
-    friend f32_3 operator*(const f32_3& vec, f32 scalar);
+    friend void operator*=(Vec3& vec, f32 scalar);
+    friend Vec3 operator*(Vec3 vec, f32 scalar);
 
     // scalar division
-    friend void operator/=(f32_3& vec, f32 scalar);
-    friend f32_3 operator/(const f32_3& vec, f32 scalar);
+    friend void operator/=(Vec3& vec, f32 scalar);
+    friend Vec3 operator/(Vec3 vec, f32 scalar);
 };
 
 
-using Vector3 = f32_3;
-
-
-struct f32_4 {
+struct Vec4 {
     union {
         f32 elements[4]{};
 
@@ -145,37 +140,34 @@ struct f32_4 {
         };
     };
 
-    static consteval f32_4 zeroed() { return f32_4{0, 0, 0, 0}; }
-    static constexpr f32_4 splat(const f32 scalar) { return f32_4{scalar, scalar, scalar, scalar}; }
+    static consteval Vec4 zeroed() { return Vec4{0, 0, 0, 0}; }
+    static constexpr Vec4 splat(const f32 scalar) { return Vec4{scalar, scalar, scalar, scalar}; }
 
-    static f32_4 from_vec3(const f32_3& vec, f32 w);
+    static Vec4 from_vec3(const Vec3& vec, f32 w);
 
-    const f32& operator[](usize index) const;
+    f32 operator[](usize index) const;
     f32& operator[](usize index);
 
     // vector addition
-    friend void operator+=(f32_4& vec, const f32_4& other);
-    friend f32_4 operator+(const f32_4& vec, const f32_4& other);
+    friend void operator+=(Vec4& vec, Vec4 other);
+    friend Vec4 operator+(Vec4 vec, Vec4 other);
 
     // vector subtraction
-    friend void operator-=(f32_4& vec, const f32_4& other);
-    friend f32_4 operator-(const f32_4& vec, const f32_4& other);
+    friend void operator-=(Vec4& vec, Vec4 other);
+    friend Vec4 operator-(Vec4 vec, Vec4 other);
 
     // scalar multiplication
-    friend void operator*=(f32_4& vec, f32 scalar);
-    friend f32_4 operator*(const f32_4& vec, f32 scalar);
+    friend void operator*=(Vec4& vec, f32 scalar);
+    friend Vec4 operator*(Vec4 vec, f32 scalar);
 
     // scalar division
-    friend void operator/=(f32_4& vec, f32 scalar);
-    friend f32_4 operator/(const f32_4& vec, f32 scalar);
+    friend void operator/=(Vec4& vec, f32 scalar);
+    friend Vec4 operator/(Vec4 vec, f32 scalar);
 };
 
 
-using Vector4 = f32_4;
-
-
 struct Mat4 {
-    f32_4 rows[4]{};
+    Vec4 rows[4]{};
 
     static consteval Mat4 identity() {
         Mat4 mat;
@@ -186,19 +178,18 @@ struct Mat4 {
         return mat;
     }
 
-    static Mat4 scale(const f32_3& s);
-    static Mat4 translation(const f32_3& t);
+    static Mat4 scale(Vec3 s);
+    static Mat4 translation(Vec3 t);
 
     static Mat4 rot_x(float angle);
     static Mat4 rot_y(float angle);
     static Mat4 rot_z(float angle);
 
-
-    const f32_4& operator[](const usize row_index) const;
-    f32_4& operator[](const usize row_index);
+    const Vec4& operator[](usize row_index) const;
+    Vec4& operator[](usize row_index);
 
     friend Mat4 operator*(const Mat4& mat_a, const Mat4& mat_b);
-    friend f32_4 operator*(const Mat4& mat, const f32_4& vec);
+    friend Vec4 operator*(const Mat4& mat, Vec4 vec);
 };
 
 
@@ -206,21 +197,21 @@ namespace math {
     constexpr f64 pi = 3.14159265358979323846;
     constexpr f64 tau = pi * 2.0;
 
-    f32 sq_magnitude(const Vector2& vec);
-    f32 magnitude(const Vector2& vec);
+    f32 sq_magnitude(Vec2 vec);
+    f32 magnitude(Vec2 vec);
 
-    f32 sq_magnitude(const Vector3& vec);
-    f32 magnitude(const Vector3& vec);
+    f32 sq_magnitude(Vec3 vec);
+    f32 magnitude(Vec3 vec);
 
-    Vector2 normalized(const Vector2& vec);
-    Vector3 normalized(const Vector3& vec);
+    Vec2 normalized(Vec2 vec);
+    Vec3 normalized(Vec3 vec);
 
-    f32 dot(const Vector2& a, const Vector2& b);
-    f32 dot(const Vector3& a, const Vector3& b);
-    f32 dot(const Vector4& a, const Vector4& b);
-    Vector3 cross(const Vector3& a, const Vector3& b);
+    f32 dot(Vec2 a, Vec2 b);
+    f32 dot(Vec3 a, Vec3 b);
+    f32 dot(Vec4 a, Vec4 b);
+    Vec3 cross(Vec3 a, Vec3 b);
 
-    Vector3 rot_x(const Vector3& vec, f32 angle);
-    Vector3 rot_y(const Vector3& vec, f32 angle);
-    Vector3 rot_z(const Vector3& vec, f32 angle);
+    Vec3 rot_x(Vec3 vec, f32 angle);
+    Vec3 rot_y(Vec3 vec, f32 angle);
+    Vec3 rot_z(Vec3 vec, f32 angle);
 }

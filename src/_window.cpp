@@ -1,6 +1,9 @@
 #include "_window.h"
 #include "_color.h"
 
+#include <cassert>
+#include <iostream>
+
 // =====================================================================================================================
 // == Util =============================================================================================================
 // =====================================================================================================================
@@ -8,6 +11,7 @@
 static void log_sdl_error() {
     std::cerr << "SDL error " << SDL_GetError() << std::endl;
 }
+
 
 // =====================================================================================================================
 // == Window ===========================================================================================================
@@ -41,6 +45,8 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
         return false;
     };
 
+
+    // Determine resolution
     {
         constexpr i32 display_index = 0;
         SDL_DisplayMode display_mode;
@@ -52,16 +58,16 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
         window.height = resolution_height > 0 ? resolution_height : display_mode.h;
     }
 
-    {
-        window.sdl_window = SDL_CreateWindow(
-            nullptr,
-            SDL_WINDOWPOS_CENTERED,
-            SDL_WINDOWPOS_CENTERED,
-            window.width,
-            window.height,
-            SDL_WINDOW_BORDERLESS
-        );
 
+    // Create window
+    {
+        window.sdl_window = SDL_CreateWindow(nullptr,
+                                             SDL_WINDOWPOS_CENTERED,
+                                             SDL_WINDOWPOS_CENTERED,
+                                             window.width,
+                                             window.height,
+                                             SDL_WINDOW_BORDERLESS
+                                             );
         if (!window.sdl_window) {
             return failure();
         }
@@ -71,23 +77,25 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
         }
     }
 
+
+    // Create SDL renderer
     {
         constexpr i32 rendering_driver_index = -1; // first one supporting the given flags
         constexpr i32 renderer_flags = 0;
-        window.sdl_renderer = SDL_CreateRenderer(
-            window.sdl_window,
-            rendering_driver_index,
-            renderer_flags
-        );
-
+        window.sdl_renderer = SDL_CreateRenderer(window.sdl_window,
+                                                 rendering_driver_index,
+                                                 renderer_flags
+                                                 );
         if (!window.sdl_renderer) {
             return failure();
         }
     }
 
+
+    // Validate pixel format
     {
         constexpr SDL_PixelFormatEnum pixel_format = SDL_PIXELFORMAT_ARGB8888;
-        // ensure pixel_format is valid
+
         SDL_RendererInfo renderer_info;
         if (SDL_GetRendererInfo(window.sdl_renderer, &renderer_info) != 0) {
             return failure();
@@ -105,13 +113,12 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
             return failure();
         }
 
-        window.sdl_color_buffer_texture = SDL_CreateTexture(
-            window.sdl_renderer,
-            pixel_format,
-            SDL_TEXTUREACCESS_STREAMING, // we'll be updating the texture every frame
-            window.width,
-            window.height
-        );
+        window.sdl_color_buffer_texture = SDL_CreateTexture(window.sdl_renderer,
+                                                            pixel_format,
+                                                            SDL_TEXTUREACCESS_STREAMING, // we'll be updating the texture every frame
+                                                            window.width,
+                                                            window.height
+                                                            );
     }
 
     window.color_buffer = std::vector(window.width * window.height, Color::black());
@@ -125,16 +132,16 @@ bool Window::poll_events() const {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
-        case SDL_QUIT: {
-            return false;
-        }
-        case SDL_KEYDOWN: {
-            const SDL_KeyboardEvent keyboard_event = event.key;
-            if (keyboard_event.keysym.sym == SDLK_ESCAPE) {
+            case SDL_QUIT: {
                 return false;
             }
-        }
-        default: ;
+            case SDL_KEYDOWN: {
+                const SDL_KeyboardEvent keyboard_event = event.key;
+                if (keyboard_event.keysym.sym == SDLK_ESCAPE) {
+                    return false;
+                }
+            }
+            default: ;
         }
     }
 
@@ -175,26 +182,34 @@ bool Window::render_present_color_buffer() const {
     static_assert(sizeof(Color) == 4);
     assert(color_buffer.size() == width * height);
 
-    void* pixels;
-    i32 pitch;
-    i32 result = SDL_LockTexture(sdl_color_buffer_texture,
-                                 nullptr, // full rect
-                                 &pixels,
-                                 &pitch
-    );
-    if (result != 0) {
+    auto failure = []() -> bool {
         log_sdl_error();
         return false;
+    };
+
+
+    void* pixels;
+    i32 pitch;
+    i32 result = SDL_LockTexture(sdl_color_buffer_texture, 
+                                 nullptr,  // full rect
+                                 &pixels, 
+                                 &pitch
+                                 );
+    if (result != 0) {
+        return failure();
     }
     assert(pitch == width * sizeof(Color));
 
     memcpy(pixels, color_buffer.data(), sizeof(Color) * color_buffer.size());
     SDL_UnlockTexture(sdl_color_buffer_texture);
 
-    result = SDL_RenderCopy(sdl_renderer, sdl_color_buffer_texture, nullptr, nullptr);
+    result = SDL_RenderCopy(sdl_renderer, 
+                            sdl_color_buffer_texture, 
+                            nullptr, 
+                            nullptr
+                            );
     if (result != 0) {
-        log_sdl_error();
-        return false;
+        return failure();
     }
 
     SDL_RenderPresent(sdl_renderer);
