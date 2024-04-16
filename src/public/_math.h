@@ -90,6 +90,9 @@ struct f32_2 {
 using Vector2 = f32_2;
 
 
+struct f32_4; 
+
+
 struct f32_3 {
     union {
         f32 elements[3]{};
@@ -103,6 +106,8 @@ struct f32_3 {
 
     static consteval f32_3 zeroed() { return f32_3{0, 0, 0}; }
     static constexpr f32_3 splat(const f32 scalar) { return f32_3{scalar, scalar, scalar}; }
+
+    static f32_3 from_vec4(const f32_4& vec);
 
     const f32& operator[](size_t index) const;
     f32& operator[](size_t index);
@@ -128,6 +133,75 @@ struct f32_3 {
 using Vector3 = f32_3;
 
 
+struct f32_4 {
+    union {
+        f32 elements[4]{};
+
+        struct {
+            f32 x;
+            f32 y;
+            f32 z;
+            f32 w;
+        };
+    };
+
+    static consteval f32_4 zeroed() { return f32_4{0, 0, 0, 0}; }
+    static constexpr f32_4 splat(const f32 scalar) { return f32_4{scalar, scalar, scalar, scalar}; }
+
+    static f32_4 from_vec3(const f32_3& vec, f32 w);
+
+    const f32& operator[](usize index) const;
+    f32& operator[](usize index);
+
+    // vector addition
+    friend void operator+=(f32_4& vec, const f32_4& other);
+    friend f32_4 operator+(const f32_4& vec, const f32_4& other);
+
+    // vector subtraction
+    friend void operator-=(f32_4& vec, const f32_4& other);
+    friend f32_4 operator-(const f32_4& vec, const f32_4& other);
+
+    // scalar multiplication
+    friend void operator*=(f32_4& vec, f32 scalar);
+    friend f32_4 operator*(const f32_4& vec, f32 scalar);
+
+    // scalar division
+    friend void operator/=(f32_4& vec, f32 scalar);
+    friend f32_4 operator/(const f32_4& vec, f32 scalar);
+};
+
+
+using Vector4 = f32_4;
+
+
+struct Mat4 {
+    f32_4 rows[4]{};
+
+    static consteval Mat4 identity() {
+        Mat4 mat;
+        mat.rows[0] = {1, 0, 0, 0};
+        mat.rows[1] = {0, 1, 0, 0};
+        mat.rows[2] = {0, 0, 1, 0};
+        mat.rows[3] = {0, 0, 0, 1};
+        return mat;
+    }
+
+    static Mat4 scale(const f32_3& s);
+    static Mat4 translation(const f32_3& t);
+
+    static Mat4 rot_x(float angle);
+    static Mat4 rot_y(float angle);
+    static Mat4 rot_z(float angle);
+
+
+    const f32_4& operator[](const usize row_index) const;
+    f32_4& operator[](const usize row_index);
+
+    friend Mat4 operator*(const Mat4& mat_a, const Mat4& mat_b);
+    friend f32_4 operator*(const Mat4& mat, const f32_4& vec);
+};
+
+
 namespace math {
     constexpr f64 pi = 3.14159265358979323846;
     constexpr f64 tau = pi * 2.0;
@@ -143,6 +217,7 @@ namespace math {
 
     f32 dot(const Vector2& a, const Vector2& b);
     f32 dot(const Vector3& a, const Vector3& b);
+    f32 dot(const Vector4& a, const Vector4& b);
     Vector3 cross(const Vector3& a, const Vector3& b);
 
     Vector3 rot_x(const Vector3& vec, f32 angle);

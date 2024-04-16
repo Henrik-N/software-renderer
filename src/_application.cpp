@@ -1,5 +1,6 @@
 #include "_application.h"
 #include "_color.h"
+#include "_math.h"
 
 #include <random>
 
@@ -75,7 +76,16 @@ void Application::update() {
     triangles_to_draw.clear();
     triangle_depth_values.clear();
 
+
     const f32 rot_angle = static_cast<f32>(math::tau) * t;
+
+    Mat4 world_matrix = Mat4::identity();
+    world_matrix = Mat4::scale({1.f, 0.5, 1.f}) * world_matrix;
+    world_matrix = Mat4::rot_x(rot_angle) * world_matrix;
+    world_matrix = Mat4::rot_y(rot_angle) * world_matrix;
+    world_matrix = Mat4::rot_z(rot_angle) * world_matrix;
+    world_matrix = Mat4::translation({1.f, 1.f, 1.f}) * world_matrix;
+
 
     for (usize face_index = 0; face_index < mesh.faces.size(); ++face_index) {
         Vector3 face_corners[3]{
@@ -87,9 +97,9 @@ void Application::update() {
         // transform
         //
         for (Vector3& corner : face_corners) {
-            corner = math::rot_x(corner, rot_angle);
-            corner = math::rot_y(corner, rot_angle);
-            corner = math::rot_z(corner, rot_angle);
+            corner = Vector3::from_vec4(world_matrix * 
+                                        Vector4::from_vec3(corner, 1.f)
+                                        );
             corner.z += 5.f;
         }
 
