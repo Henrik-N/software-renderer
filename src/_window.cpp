@@ -143,7 +143,7 @@ bool Window::poll_events() const {
 
 
 void Window::set_pixel(const i32 x, const i32 y, const Color color) {
-    if (x < 0 || x >= width || y < 0 || y > height) {
+    if (x < 0 || x >= width || y < 0 || y >= height) {
         return;
     }
 
