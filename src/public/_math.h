@@ -178,6 +178,9 @@ struct Mat4 {
         return mat;
     }
 
+    // Assumes that the frustum is centered on the z-axis.
+    static Mat4 perspective_projection(f32 fov_y, f32 aspect_ratio, f32 z_near, f32 z_far);
+
     static Mat4 scale(Vec3 s);
     static Mat4 translation(Vec3 t);
 
@@ -214,4 +217,9 @@ namespace math {
     Vec3 rot_x(Vec3 vec, f32 angle);
     Vec3 rot_y(Vec3 vec, f32 angle);
     Vec3 rot_z(Vec3 vec, f32 angle);
+
+    f32 to_radians(f32 degrees);
+    f32 to_degrees(f32 radians);
+
+    Vec4 perspective_divide(Vec4 vec);
 }

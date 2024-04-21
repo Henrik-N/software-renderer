@@ -1,5 +1,6 @@
 #include "_math.h"
 
+#include <cassert>
 #include <cmath>
 
 
@@ -287,6 +288,20 @@ Vec4 operator/(Vec4 vec, const f32 scalar) {
 // == Mat4 =============================================================================================================
 // =====================================================================================================================
 
+Mat4 Mat4::perspective_projection(const f32 fov, const f32 aspect_ratio, const f32 z_near, const f32 z_far) {
+    assert(z_near > 0.f && z_far > 0.f && z_near != z_far);
+
+    const f32 z_range = z_far - z_near;
+
+    Mat4 mat;
+    mat.rows[0] = {aspect_ratio * (1.f / fov), 0,             0,               0                          };
+    mat.rows[1] = {0,                          (1.f / fov),   0,               0                          };
+    mat.rows[2] = {0,                          0,             z_far / z_range, (-z_near * z_far) / z_range};
+    mat.rows[3] = {0,                          0,             1,               0                          };
+    return mat;
+}
+
+
 Mat4 Mat4::scale(const Vec3 s) {
     Mat4 mat; 
     mat.rows[0] = {s.x, 0,   0,   0}; 
@@ -461,4 +476,25 @@ Vec3 math::rot_z(const Vec3 vec, const f32 angle) {
         vec.y * std::cos(angle) + vec.x * std::sin(angle),
         vec.z
     };
+}
+
+
+f32 math::to_radians(const f32 degrees) {
+    return degrees * (math::tau / 360.f);
+}
+
+
+f32 math::to_degrees(const f32 radians) {
+    return radians * (360.f / math::tau);
+}
+
+
+Vec4 math::perspective_divide(Vec4 vec) {
+    if (vec.w == 0) {
+        return vec;
+    }
+    vec.x /= vec.w;
+    vec.y /= vec.w;
+    vec.z /= vec.w;
+    return vec;
 }

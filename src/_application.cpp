@@ -79,16 +79,33 @@ void Application::update() {
     triangle_depth_values.clear();
 
 
+    // Projection matrix
+    //
+    const f32 fov = math::to_radians(60.f);
+    const f32 aspect_ratio = static_cast<f32>(window.height) / static_cast<f32>(window.width);
+    const f32 z_near = 0.1f;
+    const f32 z_far = 10.f;
+    const Mat4 projection_matrix = Mat4::perspective_projection(fov, aspect_ratio, z_near, z_far);
+
+
+    // World space mesh matrix
+    // 
     const f32 rot_angle = static_cast<f32>(math::tau) * t;
 
-    Mat4 world_matrix = Mat4::identity();
-    world_matrix = Mat4::scale({1.f, 0.5, 1.f}) * world_matrix;
-    world_matrix = Mat4::rot_x(rot_angle) * world_matrix;
-    world_matrix = Mat4::rot_y(rot_angle) * world_matrix;
-    world_matrix = Mat4::rot_z(rot_angle) * world_matrix;
-    world_matrix = Mat4::translation({1.f, 1.f, 1.f}) * world_matrix;
-   
+    const Mat4 world_matrix = Mat4::translation({0.f, 0.f, 5.f}) *
+                              Mat4::rot_z(rot_angle) *
+                              Mat4::rot_y(rot_angle) *
+                              Mat4::rot_x(rot_angle) *
+                              Mat4::scale({1.f, 1.f, 1.f});
 
+    //
+    // 
+    const f32 half_window_width = static_cast<f32>(window.width) / 2.f;
+    const f32 half_window_height = static_cast<f32>(window.height) / 2.f;
+
+
+    // Mesh faces loop
+    // 
     for (usize face_index = 0; face_index < mesh.faces.size(); ++face_index) {
         Vec3 face_corners[3]{
             mesh.vertices[mesh.faces[face_index][0]],
@@ -101,7 +118,6 @@ void Application::update() {
             corner = Vec3::from_vec4(world_matrix * 
                                      Vec4::from_vec3(corner, 1.f)
                                      );
-            corner.z += 5.f;
         }
 
 
@@ -125,13 +141,36 @@ void Application::update() {
 
 
         // Projection
+        // 
         Triangle& triangle = triangles_to_draw.emplace_back();
-        for (usize corner_index = 0; corner_index < 3; ++corner_index) {
-            Vec2 projected_corner = rendering::project_point(face_corners[corner_index], fov_factor);
-            projected_corner.x += static_cast<f32>(window.width) / 2.f;
-            projected_corner.y += static_cast<f32>(window.height) / 2.f;
 
-            triangle[corner_index] = static_cast<Vec2i>(projected_corner);
+        for (usize corner_index = 0; corner_index < 3; ++corner_index) {
+
+            // Convert coordinates to image space / normalized device coordinates
+            Vec4 projected_corner = projection_matrix * Vec4::from_vec3(face_corners[corner_index], 1.f);
+            projected_corner = math::perspective_divide(projected_corner);
+
+
+            // Flip y (positive y up)
+            projected_corner.y = -projected_corner.y; 
+
+            // Translate origin to the middle of the viewport, then scale
+
+            // scale
+            projected_corner.x *= half_window_width;
+            projected_corner.y *= half_window_height;
+
+            // translate
+            projected_corner.x += half_window_width;
+            projected_corner.y += half_window_height;
+
+
+            // Cast to screen coordinates
+
+            triangle[corner_index] = Vec2i{
+                static_cast<i32>(projected_corner.x),
+                static_cast<i32>(projected_corner.y),
+            };
         }
     }
 

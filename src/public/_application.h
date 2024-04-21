@@ -8,7 +8,7 @@
 #include "_color.h"
 
 
-constexpr bool enable_culling = false;
+constexpr bool enable_culling = true;
 
 
 using Triangle = std::array<Vec2i, 3>;
