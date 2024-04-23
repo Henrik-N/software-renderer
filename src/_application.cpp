@@ -2,7 +2,7 @@
 #include "_color.h"
 #include "_math.h"
 
-#include <random>
+#include <numeric>
 #include <algorithm>
 
 
@@ -20,6 +20,7 @@ bool Application::init(Application& app) {
     app.fov_factor = 600.f;
 
     app.camera_position = Vec3{0, 0, 0};
+    app.light.direction = Vec3{0.25f, -0.5f, 0.25f};
 
     app.t = 0.f;
 
@@ -45,7 +46,7 @@ i32 Application::run() {
 
 
 bool Application::setup() {
-    if (!Mesh::load_from_obj(mesh, "cube.obj")) {
+    if (!Mesh::load_from_obj(mesh, "icosphere.obj")) {
         return false;
     }
 
@@ -53,17 +54,7 @@ bool Application::setup() {
     triangles_to_draw.reserve(num_faces);
     triangle_depth_values.reserve(num_faces);
     triangle_draw_order.reserve(num_faces);
-
-
-    // Generate some random colors just to have something for now
     triangle_draw_colors.resize(num_faces);
-    {
-        std::random_device random;
-        std::uniform_int_distribution<u8> dist{0, 255};
-        for (Color& col : triangle_draw_colors) {
-            col = Color::rgba(dist(random), dist(random), dist(random), 255);
-        }
-    }
 
     return true;
 }
@@ -77,6 +68,7 @@ void Application::update() {
 
     triangles_to_draw.clear();
     triangle_depth_values.clear();
+    triangle_draw_colors.clear();
 
 
     // Projection matrix
@@ -96,7 +88,7 @@ void Application::update() {
                               Mat4::rot_z(rot_angle) *
                               Mat4::rot_y(rot_angle) *
                               Mat4::rot_x(rot_angle) *
-                              Mat4::scale({1.f, 1.f, 1.f});
+                              Mat4::scale({1.2f, 2.f, 1.2f});
 
     //
     // 
@@ -121,11 +113,12 @@ void Application::update() {
         }
 
 
+        const Vec3 face_normal_not_normalized = math::cross(face_corners[1] - face_corners[0],
+                                                            face_corners[2] - face_corners[0]
+                                                            );
+
         // Temporary culling solution
         if constexpr (enable_culling) {
-            const Vec3 face_normal_not_normalized = math::cross(face_corners[1] - face_corners[0],
-                                                                face_corners[2] - face_corners[0]
-                                                                );
             const Vec3 ray_to_face_corner = face_corners[0] - camera_position;
 
             if (const bool should_cull_face = math::dot(face_normal_not_normalized, ray_to_face_corner) >= 0;
@@ -135,9 +128,16 @@ void Application::update() {
         }
 
 
+        // Flat shading
+        f32 light_intensity = -math::dot(light.direction, math::normalized(face_normal_not_normalized));
+        if (light_intensity < 0.f)  {
+            light_intensity = 0.0f;
+        }
+        triangle_draw_colors.emplace_back() = Color::white().with_intensity(light_intensity);
+    
+
         // Temporary depth buffer
-        f32& triangle_depth = triangle_depth_values.emplace_back();
-        triangle_depth = (face_corners[0].z + face_corners[1].z + face_corners[2].z); // /3.f,;
+        triangle_depth_values.emplace_back() = face_corners[0].z + face_corners[1].z + face_corners[2].z; // / 3.f;
 
 
         // Projection
@@ -193,7 +193,6 @@ void Application::render() {
         const Triangle& triangle = triangles_to_draw[draw_index];
         const Color draw_color = triangle_draw_colors[draw_index];
         draw_triangle_filled(window, triangle, draw_color);
-        draw_triangle_wireframe(window, triangle, Color::white());
     }
 }
 

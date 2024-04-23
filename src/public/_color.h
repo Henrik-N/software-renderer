@@ -26,4 +26,6 @@ struct Color {
     consteval static Color green() { return Color{.hex = 0xFF00FF00}; }
     consteval static Color blue() { return Color{.hex = 0xFF0000FF}; }
     consteval static Color yellow() { return Color{.hex = 0xFFFFFF00}; }
+
+    Color with_intensity(f32 percentage) const;
 };

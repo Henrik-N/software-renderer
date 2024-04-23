@@ -1,11 +1,13 @@
 #pragma once
 
 #include "_common.h"
+
+#include "_color.h"
+#include "_light.h"
 #include "_math.h"
 #include "_mesh.h"
 #include "_time.h"
 #include "_window.h"
-#include "_color.h"
 
 
 constexpr bool enable_culling = true;
@@ -19,6 +21,7 @@ struct Application {
     Time time;
 
     Vec3 camera_position;
+    Light light;
 
     f32 fov_factor;
     f32 t;
