@@ -18,6 +18,11 @@ i32& Vec2i::operator[](const usize index) {
 }
 
 
+Vec2i Vec2i::operator-() const {
+    return Vec2i{-x, -y};
+}
+
+
 void operator+=(Vec2i& vec, const Vec2i other) {
     vec.x += other.x;
     vec.y += other.y;
@@ -82,6 +87,11 @@ f32 Vec2::operator[](const usize index) const {
 
 f32& Vec2::operator[](const usize index) {
     return elements[index];
+}
+
+
+Vec2 Vec2::operator-() const {
+    return Vec2{-x, -y};
 }
 
 
@@ -157,6 +167,11 @@ f32& Vec3::operator[](const usize index) {
 }
 
 
+Vec3 Vec3::operator-() const {
+    return Vec3{-x, -y, -z};
+}
+
+
 void operator+=(Vec3& vec, const Vec3 other) {
     vec.x += other.x;
     vec.y += other.y;
@@ -225,6 +240,11 @@ f32 Vec4::operator[](const usize index) const {
 
 f32& Vec4::operator[](const usize index) {
     return elements[index];
+}
+
+
+Vec4 Vec4::operator-() const {
+    return Vec4{-x, -y, -z, -w};
 }
 
 

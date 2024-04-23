@@ -23,6 +23,8 @@ struct Vec2i {
     i32 operator[](usize index) const;
     i32& operator[](usize index);
 
+    Vec2i operator-() const;
+
     // vector addition
     friend void operator+=(Vec2i& vec, Vec2i other);
     friend Vec2i operator+(Vec2i vec, Vec2i other);
@@ -65,6 +67,8 @@ struct Vec2 {
 
     f32 operator[](usize index) const;
     f32& operator[](usize index);
+
+    Vec2 operator-() const;
 
     // vector addition
     friend void operator+=(Vec2& vec, Vec2 other);
@@ -110,6 +114,8 @@ struct Vec3 {
     f32 operator[](usize index) const;
     f32& operator[](usize index);
 
+    Vec3 operator-() const;
+
     // vector addition
     friend void operator+=(Vec3& vec, Vec3 other);
     friend Vec3 operator+(Vec3 vec, Vec3 other);
@@ -147,6 +153,8 @@ struct Vec4 {
 
     f32 operator[](usize index) const;
     f32& operator[](usize index);
+
+    Vec4 operator-() const;
 
     // vector addition
     friend void operator+=(Vec4& vec, Vec4 other);
