@@ -4,18 +4,19 @@
 
 struct Color {
     union {
+        // ARGB888
         u32 hex{};
 
         struct {
-            u8 a;
-            u8 r;
-            u8 g;
             u8 b;
+            u8 g;
+            u8 r;
+            u8 a;
         };
     };
 
     constexpr static Color rgba(const u8 r, const u8 g, const u8 b, const u8 a) {
-        return Color{.a = a, .r = r, .g = g, .b = b};
+        return Color{.b = b, .g = g, .r = r, .a = a};
     }
 
     consteval static Color black() { return Color{.hex = 0xFF000000}; }
