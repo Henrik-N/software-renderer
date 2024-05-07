@@ -1,0 +1,15 @@
+# Software renderer
+- [x] Line drawing
+- [x] Obj-file reader: vertices and faces/indices
+- [x] Triangle rasterization (DDA)
+- [x] Z-buffer v1 (Painter's algorithm)
+- [x] 3D matrix transformations
+- [x] Projection matrix
+- [x] Flat shading (Single directional light)
+- [ ] Image file decoder
+- [ ] Obj-file reader: texture attributes
+- [ ] Texture mapping
+- [ ] Z-buffer v2
+- [ ] Camera
+- [ ] Camera frustum clipping
+- [ ] Remove SDL dependency
