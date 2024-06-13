@@ -6,7 +6,7 @@
 - [x] 3D matrix transformations
 - [x] Projection matrix
 - [x] Flat shading (Single directional light)
-- [ ] Image file decoder
+- [x] Image file decoder
 - [ ] Obj-file reader: texture attributes
 - [ ] Texture mapping
 - [ ] Z-buffer v2

@@ -1,55 +1,12 @@
 #include "_mesh.h"
+#include "_io.h"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <optional>
 
-
-// =====================================================================================================================
-// == Util =============================================================================================================
-// =====================================================================================================================
 
 namespace fs = std::filesystem;
-
-
-static std::optional<fs::path> cached_asset_folder_path = {};
-
-
-static fs::path find_asset_folder_path() {
-    if (cached_asset_folder_path.has_value()) {
-        return cached_asset_folder_path.value();
-    }
-
-    fs::path asset_folder_path = fs::current_path();
-    bool found_asset_folder_path = false;
-
-    while (asset_folder_path.has_stem()) {
-        for (const fs::directory_entry& sub_dir : fs::directory_iterator(asset_folder_path)) {
-            if (sub_dir.path().has_stem() &&
-                sub_dir.path().stem() == "assets") {
-                asset_folder_path = sub_dir.path();
-                found_asset_folder_path = true;
-                break;
-            }
-        }
-
-        if (found_asset_folder_path) {
-            break;
-        }
-
-        asset_folder_path = asset_folder_path.parent_path();
-    }
-
-    if (!found_asset_folder_path) {
-        std::cerr << __FUNCTION__ << ": failed to find asset folder path" << std::endl;
-        return fs::path{};
-    }
-
-    cached_asset_folder_path = asset_folder_path;
-
-    return asset_folder_path;
-}
 
 
 // =====================================================================================================================
@@ -58,22 +15,17 @@ static fs::path find_asset_folder_path() {
 
 bool Mesh::load_from_obj(Mesh& mesh, std::string_view filename) {
     if (filename.empty()) {
-        std::cerr << __FUNCTION__ << ": filename nullptr" << std::endl;
+        ERR("filename nullptr");
         return false;
     }
 
-    const fs::path asset_folder_path = find_asset_folder_path();
-    if (asset_folder_path.empty()) {
-        return false;
-    }
-
-    const std::string asset_path = asset_folder_path / fs::path(filename);
+    const fs::path asset_path = io::find_full_asset_path(filename);
 
     std::fstream file{};
     {
         file.open(asset_path, std::ios::in);
         if (file.fail()) {
-            printf("%s: %s\n", __FUNCTION__, ": file failed to open");
+            ERR("failed to open file " << asset_path);
             return false;
         }
     }
