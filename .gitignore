@@ -3,4 +3,5 @@ cmake-build-debug
 .vscode
 .cache
 out
+build
 
