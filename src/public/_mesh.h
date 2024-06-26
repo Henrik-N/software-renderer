@@ -3,7 +3,6 @@
 #include "_common.h"
 #include "_math.h"
 
-
 struct Mesh {
     using Face_Vertex_Indices = std::array<u16, 3>;
 

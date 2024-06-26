@@ -17,7 +17,7 @@ static void log_sdl_error() {
 // == Window ===========================================================================================================
 // =====================================================================================================================
 
-Window::Window(): width(0),
+Window_System::Window_System(): width(0),
                   height(0),
                   sdl_window(nullptr),
                   sdl_renderer(nullptr),
@@ -26,7 +26,7 @@ Window::Window(): width(0),
 }
 
 
-Window::~Window() {
+Window_System::~Window_System() {
     if (sdl_color_buffer_texture) SDL_DestroyTexture(sdl_color_buffer_texture);
     if (sdl_renderer) SDL_DestroyRenderer(sdl_renderer);
     if (sdl_window) SDL_DestroyWindow(sdl_window);
@@ -34,7 +34,7 @@ Window::~Window() {
 }
 
 
-bool Window::init(Window& window, const i32 resolution_width, const i32 resolution_height, const bool real_fullscreen) {
+bool Window_System::init(const i32 resolution_width, const i32 resolution_height, const bool real_fullscreen) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << __FUNCTION__ << ": SDL_init failed" << std::endl;
         return {};
@@ -44,6 +44,8 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
         log_sdl_error();
         return false;
     };
+
+    Window_System& window = *this;
 
 
     // Determine resolution
@@ -128,7 +130,7 @@ bool Window::init(Window& window, const i32 resolution_width, const i32 resoluti
 }
 
 
-bool Window::poll_events() const {
+bool Window_System::poll_events() const {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -149,7 +151,7 @@ bool Window::poll_events() const {
 }
 
 
-void Window::set_pixel(const i32 x, const i32 y, const Color color) {
+void Window_System::set_pixel(const i32 x, const i32 y, const Color color) {
     if (x < 0 || x >= width || y < 0 || y >= height) {
         return;
     }
@@ -163,7 +165,7 @@ void Window::set_pixel(const i32 x, const i32 y, const Color color) {
 }
 
 
-bool Window::present() {
+bool Window_System::present() {
     if (!render_present_color_buffer()) {
         return false;
     }
@@ -173,12 +175,12 @@ bool Window::present() {
 }
 
 
-void Window::clear_color_buffer(const Color in_color) {
+void Window_System::clear_color_buffer(const Color in_color) {
     std::fill(color_buffer.begin(), color_buffer.end(), in_color);
 }
 
 
-bool Window::render_present_color_buffer() const {
+bool Window_System::render_present_color_buffer() const {
     static_assert(sizeof(Color) == 4);
     assert(color_buffer.size() == width * height);
 

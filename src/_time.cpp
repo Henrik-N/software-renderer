@@ -5,18 +5,13 @@
 // == Time =============================================================================================================
 // =====================================================================================================================
 
-Time::Time()
+Time_System::Time_System()
     : delta_nanoseconds(),
       delta_seconds(0) {
 }
 
 
-void Time::init(Time& time) {
-    time = Time{};
-}
-
-
-void Time::tick()
+void Time_System::update()
 {
     if (const Instant now = Clock::now();
         now > cached_now) {
@@ -28,4 +23,8 @@ void Time::tick()
 
     delta_nanoseconds = std::chrono::duration_cast<Duration_NanoSeconds>(dt_duration).count();
     delta_seconds = static_cast<f32>(delta_nanoseconds) / static_cast<float>(ns_per_s());
+}
+
+f32 Time_System::get_delta_seconds() const {
+    return delta_seconds;
 }
