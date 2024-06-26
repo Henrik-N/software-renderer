@@ -1,4 +1,4 @@
-#include "_texture.h"
+#include "_types.h"
 #include "_io.h"
 #include "_tga.h"
 

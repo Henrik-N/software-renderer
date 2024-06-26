@@ -1,9 +1,7 @@
 #include "_mesh_render.h"
 
 #include "_camera.h"
-#include "_mesh.h"
 #include "_renderer.h"
-#include "_transform.h"
 #include "_window.h"
 
 

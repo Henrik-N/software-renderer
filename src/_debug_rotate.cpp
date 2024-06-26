@@ -1,13 +1,13 @@
 #include "_debug_rotate.h"
 
-#include "_transform.h"
+#include "_types.h"
 #include "_time.h"
 
 
 Debug_Rotate_System::Debug_Rotate_System()
     : t(0.f) {
     require_component<Transform>();
-    require_component<DebugRotate>();
+    require_component<Debug_Rotate>();
 }
 
 

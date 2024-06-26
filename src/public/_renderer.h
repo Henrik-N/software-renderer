@@ -1,12 +1,11 @@
 #pragma once
-#include "_common.h"
-#include "_application.h"
+
 #include "_color.h"
+#include "_common.h"
 #include "_ecs.h"
 #include "_math.h"
+#include "_types.h"
 
-
-struct Window_System;
 
 struct Render_System final : System {
     explicit Render_System(Registry& registry);
@@ -19,4 +18,6 @@ struct Render_System final : System {
 
 private:
     Window_System& window;
+
+    static Vec2 project_point(Vec3 point, f32 fov_factor);
 };

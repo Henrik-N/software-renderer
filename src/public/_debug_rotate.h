@@ -3,7 +3,7 @@
 #include "_ecs.h"
 
 
-struct DebugRotate {};
+struct Debug_Rotate {};
 
 
 struct Debug_Rotate_System final : System {

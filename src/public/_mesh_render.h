@@ -1,11 +1,8 @@
 #pragma once
 #include "_common.h"
-#include "_application.h"
-#include "_light.h"
+#include "_ecs.h"
+#include "_types.h"
 
-struct Render_System;
-struct Camera_System;
-struct Window_System;
 
 struct Mesh_Render_System final : System {
     explicit Mesh_Render_System(const Registry& reg);

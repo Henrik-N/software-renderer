@@ -1,11 +1,10 @@
 #include "_camera.h"
+#include "_debug_rotate.h"
 #include "_ecs.h"
-#include "_mesh.h"
 #include "_mesh_render.h"
 #include "_renderer.h"
-#include "_debug_rotate.h"
 #include "_time.h"
-#include "_transform.h"
+#include "_window.h"
 
 struct Yeet{};
 struct Moo{};
@@ -31,7 +30,7 @@ i32 main() {
         .translation = {0.f, 0.f, 5.f},
         .scale = {1.2f, 2.f, 1.2f},
     });
-    reg->add(mesh_entity, DebugRotate{});
+    reg->add(mesh_entity, Debug_Rotate{});
 
     {
         Mesh mesh;
