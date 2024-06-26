@@ -13,6 +13,7 @@ private:
     const Window_System& window;
     const Render_System& renderer;
     const Camera_System& camera;
+    const Asset_Store_System& asset_store;
 
     std::vector<Triangle> triangles_to_draw;
     std::vector<f32> triangle_depth_values;

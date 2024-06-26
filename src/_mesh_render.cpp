@@ -1,5 +1,6 @@
 #include "_mesh_render.h"
 
+#include "_asset_store.h"
 #include "_camera.h"
 #include "_renderer.h"
 #include "_window.h"
@@ -11,10 +12,11 @@ constexpr bool enable_culling = true;
 Mesh_Render_System::Mesh_Render_System(const Registry& reg)
     : window(reg.get<Window_System>()),
       renderer(reg.get<Render_System>()),
-      camera(reg.get<Camera_System>()) {
+      camera(reg.get<Camera_System>()),
+      asset_store(reg.get<Asset_Store_System>()) {
 
     require_component<Transform>();
-    require_component<Mesh>();
+    require_component<Mesh_Id>();
 }
 
 
@@ -30,7 +32,9 @@ void Mesh_Render_System::update(Registry& reg) {
 
 
     for (const Entity entity : get_entities()) {
-        const Mesh& mesh = reg.get<Mesh>(entity);
+        const Mesh_Id mesh_id = reg.get<Mesh_Id>(entity);
+        const Mesh_View mesh = asset_store.access_mesh_data(mesh_id);
+
         Transform& transform = reg.get<Transform>(entity);
         transform.update_world_matrix();
 

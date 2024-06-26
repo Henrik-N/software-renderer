@@ -1,15 +1,19 @@
 #pragma once
+#include <span>
+
 #include "_common.h"
 #include "_color.h"
 #include "_math.h"
 
 
+struct Asset_Store_System;
 struct Camera_System;
 struct Render_System;
 struct Window_System;
 
 
 using Triangle = std::array<Vec2i, 3>;
+using Face_Vertex_Indices = std::array<u16, 3>;
 
 
 struct Light {
@@ -17,32 +21,37 @@ struct Light {
 };
 
 
-struct Mesh {
-    using Face_Vertex_Indices = std::array<u16, 3>;
-
-    std::vector<Vec3> vertices;
-    std::vector<Face_Vertex_Indices> faces;
-
-    static bool load_from_obj(Mesh& mesh, std::string_view filename);
-
-    void log();
+struct Mesh_Id {
+    usize id = -1;
 };
 
 
-struct Texture {
-    std::vector<Color> pixels;
+struct Mesh_View {
+    std::span<Vec3> vertices;
+    std::span<Face_Vertex_Indices> faces;
+};
+
+
+struct Texture_Id {
+    usize id = -1;
+};
+
+
+struct Texture_View {
+    std::span<Color> pixels;
     i32 width;
     i32 height;
 
-    static bool load_from_tga(Texture& texture, std::string_view filename);
+    Color get_pixel(const i32 x, const i32 y) const { return pixels[(width * y) + x]; }
 };
+
 
 
 struct Transform {
     Mat4 world_matrix;
     Vec3 translation;
     Vec3 rotation;
-    Vec3 scale;
+    Vec3 scale = Vec3{1.f, 1.f, 1.f};
 
     void update_world_matrix() {
         world_matrix = Mat4::translation(translation) *
