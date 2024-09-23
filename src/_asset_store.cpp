@@ -3,8 +3,8 @@
 #include "_io.h"
 #include "_tga.h"
 
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 
 
 namespace fs = std::filesystem;
@@ -139,21 +139,35 @@ bool Asset_Store_System::load_obj_mesh(const std::string_view filename) {
             continue;
         }
 
+        if (buffer == "vt") {
+            // Assumes obj file has both u and v and no w
+
+            Vec2 uv = {.u = 0, .v = 0};
+            line_stream >> uv.u >> uv.v;
+            uv_coordinates.emplace_back(uv);
+        }
+
         if (buffer == "f") {
-            auto next_number_before_slash = [&]() -> i32 {
-                line_stream >> buffer;
+            // Assumes obj file has at least v/vt
+
+            std::string token;
+
+            Face_Vertex_Indices vertex_indices;
+            Face_UV_Indices uv_indices;
+            for (i32 idx = 0; idx < 3; ++idx) {
+                line_stream >> buffer; // copy v/vt/.. into buffer
                 std::istringstream temp_stream{buffer};
-                std::getline(temp_stream, buffer, '/');
-                // TODO: Maybe use something that doesn't throw here in case the obj-file has an invalid format.
-                return std::stoi(buffer);
-            };
 
-            Face_Vertex_Indices face_vertex_indices;
-            face_vertex_indices[0] = next_number_before_slash() - 1; // obj files start vertices at index 1
-            face_vertex_indices[1] = next_number_before_slash() - 1;
-            face_vertex_indices[2] = next_number_before_slash() - 1;
+                std::getline(temp_stream, token, '/');
+                vertex_indices[idx] = std::stoi(token) - 1; // obj files start vertices at index 1
 
-            faces.emplace_back(face_vertex_indices);
+                std::getline(temp_stream, token, '/');
+                uv_indices[idx] = std::stoi(token);
+            }
+
+            faces.emplace_back(vertex_indices);
+            faces_uv_indices.emplace_back(uv_indices);
+
             continue;
         }
     }

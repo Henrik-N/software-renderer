@@ -57,6 +57,11 @@ struct Vec2 {
         };
 
         struct {
+            f32 u;
+            f32 v;
+        };
+
+        struct {
             f32 width;
             f32 height;
         };

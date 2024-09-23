@@ -14,6 +14,7 @@ struct Window_System;
 
 using Triangle = std::array<Vec2i, 3>;
 using Face_Vertex_Indices = std::array<u16, 3>;
+using Face_UV_Indices = std::array<u16, 3>;
 
 
 struct Light {

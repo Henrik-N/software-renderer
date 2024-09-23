@@ -22,7 +22,9 @@ private:
     std::vector<std::string> mesh_names;
     std::vector<Mesh_View> mesh_views;
     std::vector<Vec3> vertices;
+    std::vector<Vec2> uv_coordinates;
     std::vector<Face_Vertex_Indices> faces;
+    std::vector<Face_UV_Indices> faces_uv_indices;
 
     bool load_obj_mesh(std::string_view filename);
 
